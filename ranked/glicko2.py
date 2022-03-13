@@ -28,6 +28,9 @@ class Glicko2Team(Team):
         self._deviation = None
         self._volatility = None
 
+    def skill(self) -> float:
+        return self.rating
+
     def reset(self):
         self._rating = None
         self._deviation = None

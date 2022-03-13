@@ -21,6 +21,15 @@ class Team(Player):
         """Returns the estimated skill of this team"""
         return sum([player.skill() for player in self.players])
 
+    def __len__(self):
+        return len(self.players)
+
+    def __getitem__(self):
+        return self.players[0]
+
+    def __iter__(self):
+        return iter(self.players)
+
 
 class Match:
     """Represent a single match with N players"""

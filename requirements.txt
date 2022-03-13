@@ -1,2 +1,4 @@
 scipy
 altair
+trueskill
+mpmath

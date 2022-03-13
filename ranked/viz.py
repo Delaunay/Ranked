@@ -1,5 +1,3 @@
-
-
 def main():
     import json
 
@@ -9,10 +7,8 @@ def main():
     with open("C:/opt/dota2_ranks.txt") as ranks_fs:
         data = json.load(ranks_fs)
 
-
     def showkeys(d):
         print(list(d.keys()))
-
 
     table = "mmr"
     table = "ranks"
