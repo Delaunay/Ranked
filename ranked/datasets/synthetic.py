@@ -43,6 +43,14 @@ def gen_match(model, ranker: Ranker, teams: List[List[MMPlayer]]) -> Match:
 
 
 class Matchmaker:
+    """Build teams of player based on their estimated skill bracket
+
+    Notes
+    -----
+
+    * Party support requires its own matchmaker
+    """
+
     def __init__(
         self, model, players, ranker: Ranker, n_team: int = 2, n_players: int = 5
     ) -> None:
@@ -70,9 +78,11 @@ class Matchmaker:
             # shallow copy
             pool = [p for p in self.players[s:e]]
 
-            # Shuffle we want the teams to be random
+            # Shuffle; we want the teams to be random
             # if we have a lot of players then the skill between them
             # should be very close
+            #
+            # if not this is not going to be that good
             np.random.shuffle(pool)
 
             for j in range(self.n_player_match):
@@ -87,9 +97,12 @@ class Matchmaker:
 
         return Batch(*batch)
 
-    def save(self, iter, fs, method):
+    def save(self, iter, fs, method, player_filter=None):
         rows = []
         for p in self.players:
+            if player_filter and p.pid < player_filter:
+                continue
+
             cols = [
                 str(iter),
                 str(p.pid),
@@ -130,20 +143,64 @@ class SyntheticPlayerPool:
         return GenPlayer(skill, consistency)
 
 
-def simulate():
+def simulate_new_players(
+    center=1500, var=128 * 0.8, beta=128, n_matches=20, n_players=100
+):
+    """Simulate arrival of new players & focus on its trajectory.
+
+    Notes
+    -----
+
+    The goal here is to minimize the number of calibration games necessary for the player
+    to reach its skill bracket & avoid too big jumps in rating
+    """
+
     from ranked.models.glicko2 import Glicko2
     from ranked.models.noskill import NoSkill
 
-    # Reduce variance since our player pool is small
-    center = 1500
-    var = 128
-    beta = 128
-
     ranker = Glicko2(center=center, scale=var * 0.8)
-    # ranker = NoSkill(mu=center, sigma=var * 0.8)
+    # ranker = NoSkill(mu=center, sigma=var)
+
+    # Create the initial pool of players and bootstrap it
+    original_pool = simulate_bootstrapping(ranker, center, var, beta, n_players)
+
+    original_pool.player_pool.extend(
+        [
+            # Add new Players
+            GenPlayer(center + 3 * var, var * 0.5),
+            # GenPlayer(center - 3 * var, var * 0.5),
+        ]
+    )
+
+    mm = Matchmaker(original_pool, original_pool.player_pool, ranker, 2, 5)
+
+    with open("evol.csv", "w") as evol:
+        evol.write(f"#match,pid,type,skill,cons,method\n")
+
+        # Play 100 matches for each player
+        for i in range(n_matches):
+            ranker.update(mm.matches())
+            mm.save(i, evol, ranker.__class__.__name__, n_players)
+
+            if i % 100 == 0:
+                print(i)
+
+
+def simulate_bootstrapping(
+    ranker, center=1500, var=128 * 0.8, beta=128, n_players=50, n_matches=100
+):
+    """Start with a pool of new player.
+
+    Notes
+    -----
+
+    The goal here is to see the skill estimate reach its truth level as fast as possible without too much noise.
+    So player can start playing in their skill bracket fast & start improving & discorvering new strategies.
+
+    """
 
     # Generates 10'000 players
-    pool = SyntheticPlayerPool(50, center, beta)
+    pool = SyntheticPlayerPool(n_players, center, beta)
 
     # Group players in teams
     mm = Matchmaker(pool, pool.player_pool, ranker, 2, 5)
@@ -152,13 +209,17 @@ def simulate():
         evol.write(f"#match,pid,type,skill,cons,method\n")
 
         # Play 100 matches for each player
-        for i in range(100):
+        for i in range(n_matches):
             ranker.update(mm.matches())
             mm.save(i, evol, ranker.__class__.__name__)
 
             if i % 100 == 0:
                 print(i)
 
+    return pool
+
+
+def visualize_evolution():
     # Visualize the progress
     import altair as alt
     import pandas as pd
@@ -207,4 +268,6 @@ def simulate():
 
 
 if __name__ == "__main__":
-    simulate()
+    # simulate_bootstrapping()
+    simulate_new_players()
+    visualize_evolution()
