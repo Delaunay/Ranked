@@ -2,7 +2,7 @@ import math
 from collections import defaultdict
 from typing import Tuple
 
-from ranked.interface import Batch, Match, Player, Ranker, Team
+from ranked.models.interface import Batch, Match, Player, Ranker, Team
 
 
 class Glicko2Player(Player):

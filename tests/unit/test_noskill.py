@@ -1,7 +1,7 @@
 from typing import Tuple
 
-from ranked.interface import Batch, Match, Player, Ranker
-from ranked.noskill import NoSkill
+from ranked.models.interface import Batch, Match, Player, Ranker
+from ranked.models.noskill import NoSkill
 
 
 def nearly(a, b, eps=0.0001):
@@ -40,7 +40,7 @@ def test_noskill():
         [  # Elo Chess
             check(ranker.win(batch.matches[0]), 0.5058336245103013),  # 0.505756
             check(ranker.win(batch.matches[1]), 0.6904726315332785),  # 0.686300
-            check(ranker.win(batch.matches[2]), 0.794620239867361),   # 0.785026
+            check(ranker.win(batch.matches[2]), 0.794620239867361),  # 0.785026
             check(ranker.win(batch.matches[3]), 0.5393145178920864),  # 0.538778
             check(ranker.win(batch.matches[4]), 0.3478350817945835),  # 0.350705
         ]

@@ -4,7 +4,7 @@ from itertools import chain
 from numpy import mat
 from trueskill import TrueSkill
 
-from ranked.interface import Match, Player, Ranker, Team
+from ranked.models.interface import Match, Player, Ranker, Team
 
 
 class NoSkillPlayer(Player):

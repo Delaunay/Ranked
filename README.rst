@@ -11,10 +11,13 @@ Features:
 WIP
 ---
 
+* NoSkill2
 * Benchmarking suite to test each ranking algorithm
 
+   * Synthetics dataset
    * Halo 2 Matchmaking data
    * Dota2 extracted matches
+
 
 * Model calibration utilities (hyper parameter search) with Orion
 
