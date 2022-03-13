@@ -17,16 +17,27 @@ class NoSkillPlayer(Player):
 
     @property
     def mu(self):
-        return self.mu
+        return self.rating.mu
 
     @property
     def sigma(self):
-        return self.sigma
+        return self.rating.sigma
 
 
 class NoSkillTeam(Team):
     def __init__(self, *players, **config) -> None:
         super().__init__(*players, **config)
+
+
+def to_team(p):
+    if isinstance(p, NoSkillPlayer):
+        return (p,)
+    return p
+
+
+def ensure_team(players):
+    # Make sure our match is composed of teams in the game of 1v1
+    return [to_team(p) for p in players]
 
 
 class NoSkill(Ranker):
@@ -39,19 +50,43 @@ class NoSkill(Ranker):
 
     """
 
-    def __init__(self) -> None:
-        self.model = TrueSkill(backend="scipy")
+    def __init__(
+        self,
+        mu=35,
+        sigma=None,
+        beta=None,
+        tau=None,
+        draw_probability=0.1,
+    ) -> None:
+
+        if sigma is None:
+            sigma = mu / 3
+
+        if beta is None:
+            beta = sigma / 2
+
+        if tau is None:
+            tau = sigma / 100
+
+        self.model = TrueSkill(
+            mu=mu,
+            sigma=sigma,
+            beta=beta,
+            tau=tau,
+            draw_probability=draw_probability,
+            backend="scipy",
+        )
 
     def new_player(self, *args, **config) -> Player:
         return NoSkillPlayer(self.model.create_rating(*args))
 
     def new_team(self, *players, **config) -> Team:
-        return NoSkillTeam(*players)
+        return NoSkillTeam(*players, **config)
 
     def win(self, match: Match):
         if len(match) == 2:
-            team1 = match.get_player(0)
-            team2 = match.get_player(1)
+            team1 = to_team(match.get_player(0))
+            team2 = to_team(match.get_player(1))
 
             delta_mu = sum(r.mu for r in team1) - sum(r.mu for r in team2)
             sum_sigma = sum(r.sigma ** 2 for r in chain(team1, team2))
@@ -63,10 +98,16 @@ class NoSkill(Ranker):
         raise NotImplementedError()
 
     def quality(self, match: Match) -> float:
-        return self.model.quality(match.players)
+        return self.model.quality(ensure_team(match.players))
 
     def update_match(self, match: Match) -> None:
-        new_ratings = self.model.rate(match.players, ranks=match.scores)
+        teams = ensure_team(match.players)
 
-        for player, (new_rating,) in zip(match.players, new_ratings):
-            player.rating = new_rating
+        new_ratings = self.model.rate(teams, ranks=match.scores)
+
+        for (
+            team,
+            ratings,
+        ) in zip(teams, new_ratings):
+            for p, rating in zip(team, ratings):
+                p.rating = rating

@@ -16,7 +16,7 @@ WIP
    * Halo 2 Matchmaking data
    * Dota2 extracted matches
 
-* Model calibration utilities (hyper parameter search)
+* Model calibration utilities (hyper parameter search) with Orion
 
 
 .. code-block:: bash
