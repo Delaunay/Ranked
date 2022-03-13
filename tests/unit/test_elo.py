@@ -97,6 +97,7 @@ def test_elo_norm():
     ranker = Elo(1, norm, 0.10435876689)
 
     p1, batch = get_match_batch(ranker, 1500, 173)
+    previous = p1.skill()
 
     assert all(
         [
@@ -112,6 +113,7 @@ def test_elo_norm():
     for match in batch:
         ranker.update(match)
 
+    assert previous > p1.skill()  # Rating got down
     assert nearly(p1.skill() * 173 + 1500, 1602.131659)  # 1603.191184
 
 
@@ -141,29 +143,21 @@ def test_elo_team():
     ranker = ChessElo()
 
     t1, t2, results = get_team_match_batch(ranker)
+    t1_previous = t1.skill()
+    t2_previous = t2.skill()
 
-    assert all(
-        [
-            check(t1.skill(), 3001.0),
-        ]
-    )
+    assert all([check(t1.skill(), 3001.0)])
 
-    assert all(
-        [
-            check(t2.skill(), 3086.0),
-        ]
-    )
+    assert all([check(t2.skill(), 3086.0)])
 
     ranker.update(results)
+
+    assert t1_previous < t1.skill()  # Draw favored t1
+    assert t2_previous > t2.skill()
 
     assert all(
         [
             check(t1.skill(), 3017.83171558993),
-        ]
-    )
-
-    assert all(
-        [
             check(t2.skill(), 3069.16828441007),
         ]
     )
