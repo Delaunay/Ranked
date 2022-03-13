@@ -11,5 +11,6 @@ if __name__ == '__main__':
         packages=[
             'ranked',
         ],
+        install_requires=['scipy', 'altair'],
         setup_requires=['setuptools'],
     )
