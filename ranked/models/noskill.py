@@ -107,7 +107,7 @@ class NoSkill(Ranker):
     def update_match(self, match: Match) -> None:
         teams = ensure_team(match.players)
 
-        new_ratings = self.model.rate(teams, ranks=match.scores)
+        new_ratings = self.model.rate(teams, ranks=[1 / (s + 1) for s in match.scores])
 
         for (
             team,

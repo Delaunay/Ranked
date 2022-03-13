@@ -110,9 +110,15 @@ class Glicko2(Ranker):
     CENTER = 1500
     SCALE = 173.7178
 
-    def __init__(self, tau=None) -> None:
+    def __init__(self, center=None, scale=None, tau=None) -> None:
         if tau is not None:
             self.TAU = tau
+
+        if center is not None:
+            self.CENTER = center
+
+        if scale is not None:
+            self.SCALE = scale
 
         self.cache = dict()
         self.hits = defaultdict(int)
@@ -129,7 +135,7 @@ class Glicko2(Ranker):
 
     @cache
     def phi(self, player: Glicko2Player) -> float:
-        return player.deviation / 173.7178
+        return player.deviation / self.SCALE
 
     @cache
     def g(self, player: Glicko2Player) -> float:

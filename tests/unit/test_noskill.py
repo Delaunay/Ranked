@@ -49,7 +49,7 @@ def test_noskill():
     for match in batch:
         ranker.update(match)
 
-    assert nearly(p1.skill(), 1566.131482142478)  # 1603.191184
+    assert nearly(p1.skill(), 1567.5437809554614)  # 1603.191184
 
 
 def test_noskill_batch():
@@ -59,7 +59,7 @@ def test_noskill_batch():
 
     ranker.update(batch)
 
-    assert nearly(p1.skill(), 1566.131482142478)  # 1603.191184
+    assert nearly(p1.skill(), 1567.5437809554614)  # 1603.191184
 
 
 def get_team_match_batch(ranker, sub=0, div=1) -> Tuple[Player, Batch]:
@@ -90,11 +90,6 @@ def test_noskill_team():
     assert all(
         [
             check(t1.skill(), 3001.0),
-        ]
-    )
-
-    assert all(
-        [
             check(t2.skill(), 3086.0),
         ]
     )
@@ -103,12 +98,7 @@ def test_noskill_team():
 
     assert all(
         [
-            check(t1.skill(), 3060.010993148998),
-        ]
-    )
-
-    assert all(
-        [
-            check(t2.skill(), 3026.989006851002),
+            check(t1.skill(), 3025.302510083812),
+            check(t2.skill(), 3061.6974899161874),
         ]
     )

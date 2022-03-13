@@ -87,16 +87,25 @@ class Matchmaker:
 
         return Batch(*batch)
 
-    def save(self, iter, fs):
+    def save(self, iter, fs, method):
         rows = []
         for p in self.players:
             cols = [
                 str(iter),
                 str(p.pid),
+                "truth",
                 str(p.truth.skill),
                 str(p.truth.consistency),
+                str(method),
+            ]
+            rows.append(", ".join(cols))
+            cols = [
+                str(iter),
+                str(p.pid),
+                "estimate",
                 str(p.estimation.skill()),
                 str(p.estimation.consistency()),
+                str(method),
             ]
             rows.append(", ".join(cols))
 
@@ -125,24 +134,30 @@ def simulate():
     from ranked.models.glicko2 import Glicko2
     from ranked.models.noskill import NoSkill
 
-    ranker = Glicko2()
-
+    # Reduce variance since our player pool is small
     center = 1500
-    var = 173
+    var = 128
+    beta = 128
+
+    ranker = Glicko2(center=center, scale=var * 0.8)
+    # ranker = NoSkill(mu=center, sigma=var * 0.8)
 
     # Generates 10'000 players
-    pool = SyntheticPlayerPool(40, center, var)
+    pool = SyntheticPlayerPool(50, center, beta)
 
     # Group players in teams
     mm = Matchmaker(pool, pool.player_pool, ranker, 2, 5)
 
     with open("evol.csv", "w") as evol:
-        evol.write(f"iter,pid,tskill,tcons,eskill,econs\n")
+        evol.write(f"#match,pid,type,skill,cons,method\n")
 
         # Play 100 matches for each player
         for i in range(100):
             ranker.update(mm.matches())
-            mm.save(i, evol)
+            mm.save(i, evol, ranker.__class__.__name__)
+
+            if i % 100 == 0:
+                print(i)
 
     # Visualize the progress
     import altair as alt
@@ -150,27 +165,45 @@ def simulate():
 
     evol = pd.read_csv("evol.csv")
 
-    estimate = (
+    highlight = alt.selection(
+        type="single", on="mouseover", fields=["pid"], nearest=True
+    )
+
+    estimate = alt.Chart(evol).encode(
+        x="#match:Q",
+        y=alt.Y("skill:Q", scale=alt.Scale(domain=[1000, 2000])),
+        color="pid:N",
+        strokeDash="type:N",
+    )
+
+    points = (
+        estimate.mark_circle()
+        .encode(opacity=alt.value(0))
+        .add_selection(highlight)
+        .properties(width=600)
+    )
+
+    lines = estimate.mark_line().encode(
+        size=alt.condition(~highlight, alt.value(1), alt.value(3))
+    )
+
+    (points + lines).save(f"evol.html")
+
+    eskill_distribution = (
         alt.Chart(evol)
-        .mark_line()
+        .mark_bar(color="rgba(0, 0, 125, 0.5)")
         .encode(
-            x="iter:Q",
-            y=alt.Y("eskill:Q", scale=alt.Scale(domain=[1000, 2000])),
-            color="pid:N",
+            alt.X(
+                "skill:Q",
+                bin=alt.Bin(maxbins=20),
+                scale=alt.Scale(domain=[1000, 2000]),
+            ),
+            y="count()",
+            color="type",
         )
     )
 
-    truth = (
-        alt.Chart(evol)
-        .mark_line(strokeDash=[1, 1])
-        .encode(
-            x="iter:Q",
-            y=alt.Y("tskill:Q", scale=alt.Scale(domain=[1000, 2000])),
-            color="pid:N",
-        )
-    )
-
-    (estimate + truth).save(f"evol.html")
+    eskill_distribution.save(f"skill_dist.html")
 
 
 if __name__ == "__main__":
