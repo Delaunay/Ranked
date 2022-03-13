@@ -6,6 +6,12 @@ class Player:
         """Returns the estimated skill of this player"""
         raise NotImplementedError()
 
+    def consistency(self) -> float:
+        return 0
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(s={self.skill():4.2f})"
+
 
 class Team(Player):
     """Combine multiple players and make them look like one to the ranking algorithm.
@@ -28,6 +34,10 @@ class Team(Player):
 
     def __iter__(self):
         return iter(self.players)
+
+    def __repr__(self) -> str:
+        players = ", ".join([repr(p) for p in self.players])
+        return f"{self.__class__.__name__}({players})"
 
 
 class Match:

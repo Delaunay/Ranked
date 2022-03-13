@@ -14,6 +14,9 @@ class Glicko2Player(Player):
     def skill(self) -> float:
         return self.rating
 
+    def consistency(self) -> float:
+        return self.deviation
+
     def interval(self) -> Tuple[float, float]:
         eps = 2 * self.deviation
         return self.rating - eps, self.rating + eps
@@ -243,7 +246,6 @@ class Glicko2(Ranker):
             delayed_updates[player] = update
 
         for player, (r, d, v) in delayed_updates.items():
-            print(player, r - player.rating)
             player.rating = r
             player.deviation = d
             player.volatility = v

@@ -15,6 +15,9 @@ class NoSkillPlayer(Player):
         """Returns the estimated skill of this team"""
         return self.rating.mu
 
+    def consistency(self) -> float:
+        return self.rating.sigma
+
     @property
     def mu(self):
         return self.rating.mu
@@ -32,6 +35,7 @@ class NoSkillTeam(Team):
 def to_team(p):
     if isinstance(p, NoSkillPlayer):
         return (p,)
+
     return p
 
 
