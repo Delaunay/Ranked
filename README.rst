@@ -39,7 +39,7 @@ Features:
 * A common interface for ranking algorithms
 * Elo (Chess & Generic)
 * Glicko2
-* NoSkill (i.e TrueSkill)
+* NoSkill (similar to Trueskill, i.e bayesian inference on a bipartite graph)
 * Synthetics benchmarks
 * Basic match maker
 
