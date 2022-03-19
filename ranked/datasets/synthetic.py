@@ -1,11 +1,11 @@
+import json
 import math
 from typing import List, Tuple
-import json
 
 from scipy.stats import norm, uniform
 
-from ranked.models.interface import Batch, Match, Player, Ranker, Team
 from ranked.matchmaker import Matchmaker
+from ranked.models.interface import Batch, Match, Player, Ranker, Team
 
 
 class MatchmakerReplaySaver:
