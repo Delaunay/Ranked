@@ -337,14 +337,13 @@ def load_skill_evolution(filename):
     return data[data["pid"] >= n_players]
 
 
-if __name__ == "__main__":
+def main(n_matches_bootstrap=100, n_maches_newplayers=20):
     from ranked.models.glicko2 import Glicko2
     from ranked.models.noskill import NoSkill
 
     center = 1500
     var = 128 * 0.8
     beta = 128
-    n_matches = 20
     n_players = 100
 
     ranker = Glicko2(center, var)
@@ -353,11 +352,11 @@ if __name__ == "__main__":
 
     # Create the initial pool of players
     print("Bootstrap Player pool")
-    sim.bootstrap(n_matches=100)
+    sim.bootstrap(n_matches=n_matches_bootstrap)
 
     # Check how new players are doing
     print("Add New PLayers")
-    sim.newplayers(n_matches=20)
+    sim.newplayers(n_matches=n_maches_newplayers)
 
     print("Compile data")
     bootstrap = load_skill_evolution("bootstrap.csv")
@@ -367,3 +366,7 @@ if __name__ == "__main__":
     new_chart = skill_estimate_evolution(newplayers)
 
     (boot_chart & new_chart).save("evol.html")
+
+
+if __name__ == "__main__":
+    main()
