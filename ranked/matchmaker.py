@@ -21,10 +21,12 @@ class Matchmaker:
     """
 
     def __init__(self, pool: List[Player], n_team: int = 2, n_players: int = 5) -> None:
+        # players should never be reordered
         self.players = pool
-        self.players_pid = [
-            i for i, _ in enumerate(pool)
-        ]
+        self.first_player = self.players[0]
+
+        # players_pid can be shuffled
+        self.players_pid = [i for i, _ in enumerate(pool)]
 
         self.n_team = n_team
         self.n_players = n_players
@@ -37,7 +39,7 @@ class Matchmaker:
 
     def matches(self) -> List[MatchMakerMatch]:
         # sort players by their estimated skill
-        self.players_pid.sort(key=lambda item:  self.players[i].skill())
+        self.players_pid.sort(key=lambda item: self.players[item].skill())
 
         s = 0
         e = self.n_player_match
@@ -65,5 +67,7 @@ class Matchmaker:
             s = e
             e += self.n_player_match
 
+        # players cannot be shuffled
+        # we rely on the order to give use the player id
+        assert self.first_player is self.players[0]
         return batch
-
