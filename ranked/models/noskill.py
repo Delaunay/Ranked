@@ -8,7 +8,7 @@ from ranked.models.interface import Match, Player, Ranker, Team
 
 
 class NoSkillPlayer(Player):
-    def __init__(self, rating) -> None:
+    def __init__(self, rating, *args) -> None:
         self.rating = rating
 
     def skill(self) -> float:
@@ -81,8 +81,8 @@ class NoSkill(Ranker):
             backend="scipy",
         )
 
-    def new_player(self, *args, **config) -> Player:
-        return NoSkillPlayer(self.model.create_rating(*args))
+    def new_player(self, a, b, *args, **config) -> Player:
+        return NoSkillPlayer(self.model.create_rating(a, b), *args)
 
     def new_team(self, *players, **config) -> Team:
         return NoSkillTeam(*players, **config)

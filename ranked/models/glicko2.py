@@ -6,7 +6,7 @@ from ranked.models.interface import Batch, Match, Player, Ranker, Team
 
 
 class Glicko2Player(Player):
-    def __init__(self, rating=1500, deviation=350, volatility=0.06) -> None:
+    def __init__(self, rating=1500, deviation=350, volatility=0.06, *args) -> None:
         self.rating: float = rating
         self.deviation: float = deviation
         self.volatility: float = volatility

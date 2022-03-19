@@ -43,10 +43,14 @@ class Team(Player):
 class Match:
     """Represent a single match with N players"""
 
-    def __init__(self, *ranks) -> None:
-        self.players = [p for p, _ in ranks]
-        self.scores = [r for _, r in ranks]
-        self.ranks = ranks
+    def __init__(self, *leaderboard) -> None:
+        self.players = [p for p, _ in leaderboard]
+        self.scores = [r for _, r in leaderboard]
+        self.leaderboard = leaderboard
+
+    @property
+    def teams(self):
+        return self.players
 
     def get_score(self, index) -> float:
         return self.scores[index]

@@ -11,7 +11,9 @@ MatchMakerMatch = List[MatchMakerTeam]
 
 
 class Matchmaker:
-    """Build teams of player based on their estimated skill bracket
+    """Build teams of player based on their estimated skill bracket.
+    The goal of the matchmaker is to builds teams of similar strength
+    to gives every teams a fair chance of winning.
 
     Notes
     -----

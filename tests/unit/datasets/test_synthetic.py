@@ -1,5 +1,5 @@
-from ranked.datasets.synthetic import main
+from ranked.simulation import main
 
 
-def test_synthethic():
-    main(20, 5)
+def synthetic_main():
+    main(20, 5, 10)

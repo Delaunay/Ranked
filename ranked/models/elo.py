@@ -6,7 +6,7 @@ from ranked.models.interface import Match, Player, Ranker, Team
 
 
 class EloPlayer(Player):
-    def __init__(self, mu=0) -> None:
+    def __init__(self, mu=0, *args) -> None:
         self.mu = mu
 
     def skill(self) -> float:

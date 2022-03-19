@@ -4,11 +4,14 @@ from typing import List, Tuple
 
 from scipy.stats import norm, uniform
 
+from ranked.datasets.interface import Matchup
 from ranked.matchmaker import Matchmaker
 from ranked.models.interface import Batch, Match, Player, Ranker, Team
 
 
-class MatchmakerReplaySaver:
+class MatchupReplaySaver:
+    """Save simulated matchup so they can be replayed"""
+
     def __init__(self, filename) -> None:
         self.replay = open(filename, "w")
 
@@ -18,20 +21,34 @@ class MatchmakerReplaySaver:
     def __exit__(self, *args, **kwargs):
         self.replay.__exit__(*args, **kwargs)
 
-    def save(self, teams):
-        if self.replay is None:
-            return
+    def save(self, batch, teams: List[List[int]], match: Match):
+        cols = []
+        for (team_obj, score), team in zip(match.leaderboard, teams):
+            team_info = dict(
+                players=team,
+                score=score,
+                skill=team_obj.skill(),
+            )
+            cols.append(team_info)
 
-        saved = []
-        for t in teams:
-            players = []
+        self.replay.write(json.dumps(dict(batch=batch, teams=cols)) + "\n")
 
-            for p in t:
-                players.append(p.pid)
+    def save_model(self, model, player_filter=None):
+        rows = []
 
-            saved.append(players)
+        players = model.players
 
-        self.replay.write(json.dumps(saved) + "\n")
+        with open("model.csv", "w") as fs:
+            fs.write(f"pid,skill,cons\n")
+
+            for i, p in enumerate(players):
+                if player_filter and i < player_filter:
+                    continue
+
+                cols = [str(i), str(p.skill), str(p.consistency)]
+                rows.append(", ".join(cols))
+
+            fs.write("\n".join(rows) + "\n")
 
 
 class GenPlayer:
@@ -45,6 +62,10 @@ class GenPlayer:
         """Sample a performance rating from the player"""
         skill = norm(self.skill, self.consistency).rvs()
         return norm(skill, model.perf_vol).rvs()
+
+    @property
+    def args(self):
+        return (self.skill, self.consistency)
 
 
 class SyntheticPlayerPool:
@@ -121,252 +142,103 @@ class SimulateMatch:
         return Match(*scoreboard)
 
 
-class SaveEvolution:
-    def __init__(self, fname, pool, ranker) -> None:
-        self.fs = open(fname, "w")
-        self.header()
-        self.ranker = ranker.__class__.__name__
-        self.pool = pool
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args, **kwargs):
-        self.fs.__exit__(*args, **kwargs)
-
-    def save_outcome(self, match, result):
-        pass
-
-    def save_model(self, model, player_filter=None):
-        rows = []
-
-        players = model.players
-
-        with open("model.csv", "w") as fs:
-            fs.write(f"pid,skill,cons\n")
-
-            for i, p in enumerate(players):
-                if player_filter and i < player_filter:
-                    continue
-
-                cols = [str(i), str(p.skill), str(p.consistency)]
-                rows.append(", ".join(cols))
-
-            fs.write("\n".join(rows) + "\n")
-
-    def header(self):
-        self.fs.write(f"#match,pid,skill,cons,method\n")
-
-    def save(self, iter, method, player_filter=None):
-        rows = []
-        for pid, p in enumerate(self.pool):
-            if player_filter and pid < player_filter:
-                continue
-
-            cols = [
-                str(iter),
-                str(pid),
-                str(p.skill()),
-                str(p.consistency()),
-                str(self.ranker),
-            ]
-            rows.append(", ".join(cols))
-
-        self.fs.write("\n".join(rows) + "\n")
-
-
-class Simulation:
+class SimulatedMatchup(Matchup):
     def __init__(
-        self, ranker, center=1500, var=128 * 0.8, beta=128, n_players=100
+        self, ranker, pool, model, n_matches, n_team, n_player_per_team
     ) -> None:
-        self.center = center
-        self.var = var
-        self.beta = beta
-        self.n_players = n_players
+        self.model = model
+        self._pool = pool
+        self.n_team = n_team
+        self.mm = None
+        self.n_player_per_team = n_player_per_team
+        self.sim = SimulateMatch(ranker, model, pool)
+        self.saver = None
+        self.batch_id = 0
+        self.n_matches = n_matches
         self.ranker = ranker
-        self.pool = None
-        self.model = None
+        self.reset()
+
+    def set_estimate_to_truth(self):
+        """Update current estimate to match the simulated skill.
+        This function is useful to benchmark score evolution in a
+        existing pool of players or to benchmark the matchmaker when the skill is known
+        """
+        for i, truth in enumerate(self.model.players):
+            self._pool[i] = self.ranker.new_player(*truth.args)
+
+        # reset the matchmaker so he uses the updated pool
+        self.reset()
+
+    def save(self, fname: str):
+        """Enable saving of the matchup during a simulation"""
+        self.saver = MatchupReplaySaver(fname)
+        self.saver.save_model(self.model)
 
     def add_player(self, *args):
         """Insert new players to the player pool"""
         if self.pool is None:
-            raise RuntimeError("No existing player pool, call `bootstrap` first")
+            raise RuntimeError("No existing player pool")
 
         p = self.model.new_player(*args)
         self.model.player_pool.append(p)
-        self.pool.append(self.ranker.new_player())
+        self._pool.append(self.ranker.new_player())
 
-    def bootstrap(self, n_matches, statfs="bootstrap.csv"):
-        """Create a new pool of players and simulate n_matches
+        # reset the matchmaker so he uses the updated pool
+        self.reset()
 
-        Notes
-        -----
-
-        The goal here is to see the skill estimate reach its truth level as fast as possible without too much noise.
-        So player can start playing in their skill bracket fast & start improving & discorvering new strategies.
-
-        Returns
-        -------
-        the model and the final skill estimation for each players
-        """
-
-        # Generates 10'000 players
-        self.model = SyntheticPlayerPool(self.n_players, self.center, self.beta)
-
-        # Initialize the players
-        self.pool = [self.ranker.new_player() for _ in range(self.n_players)]
-
-        self.simulate(n_matches, statfs)
-
-    def simulate(self, n_matches, statfs="simulation.csv", filter=None):
-        """Simulate n matches"""
-
-        # Part of the simulation
-        mm = Matchmaker(self.pool, 2, 5)
-        sim = SimulateMatch(self.ranker, self.model, self.pool)
-
-        with SaveEvolution(statfs, self.pool, self.ranker) as saver:
-            saver.save_model(self.model)
-
-            # Play 100 matches for each player
-            for i in range(n_matches):
-
-                # Group players in teams
-                for match in mm.matches():
-
-                    # Simulate match outcomes
-                    result = sim.simulate(match)
-
-                    # Update simulated skill
-                    self.ranker.update(result)
-
-                    saver.save_outcome(match, result)
-
-                saver.save(i, self.ranker.__class__.__name__, filter)
-
-                if i % 100 == 0:
-                    print(i)
-
-    def newplayers(self, n_matches, statfs="newplayers.csv"):
-        """Add new players to the current pool of players & simulate
-
-        Notes
-        -----
-
-        The goal here is to minimize the number of calibration games necessary for the player
-        to reach its skill bracket & avoid too big jumps in rating
-        """
-
+    def replace_player(self, *args, i=-1):
+        """Replace an older player with a new one"""
         if self.pool is None:
-            raise RuntimeError("No existing player pool, call `bootstrap` first")
+            raise RuntimeError("No existing player pool")
 
-        # a new players to the pool
-        self.add_player(self.center + 3 * self.var, self.var * 0.5)
-        self.add_player(self.center - 3 * self.var, self.var * 0.5)
+        p = self.model.new_player(*args)
+        self.model.player_pool[i] = p
+        self._pool[i] = self.ranker.new_player()
 
-        self.simulate(n_matches, statfs, filter=self.n_players)
+        # reset the matchmaker so he uses the updated pool
+        self.reset()
 
+    def reset(self):
+        self.mm = Matchmaker(self._pool, self.n_team, self.n_player_per_team)
 
-def skill_estimate_evolution(dataframe):
-    import altair as alt
+    @property
+    def pool(self):
+        return self._pool
 
-    highlight = alt.selection(
-        type="single", on="mouseover", fields=["pid"], nearest=True
-    )
+    def matches(self) -> Batch:
+        for i in range(self.n_matches):
+            batch = []
 
-    chart = alt.Chart(dataframe).encode(
-        x="#match:Q",
-        y=alt.Y("skill:Q", scale=alt.Scale(domain=[1000, 2000])),
-        color="pid:N",
-        strokeDash="type:N",
-    )
+            # Group players in teams
+            for teams in self.mm.matches():
 
-    points = (
-        chart.mark_circle()
-        .encode(opacity=alt.value(0))
-        .add_selection(highlight)
-        .properties(width=600)
-    )
+                # Simulate match outcomes
+                result: Match = self.sim.simulate(teams)
 
-    lines = chart.mark_line().encode(
-        size=alt.condition(~highlight, alt.value(1), alt.value(3))
-    )
+                if self.saver is not None:
+                    self.saver.save(i, teams, result)
 
-    return points + lines
+                batch.append(result)
+
+            yield Batch(*batch)
 
 
-def skill_distribution(dataframe):
-    import altair as alt
+def create_simulated_matchups(
+    ranker,
+    n_players,
+    center,
+    beta,
+    n_matches,
+    n_team,
+    n_player_per_team,
+    pool=None,
+    model=None,
+) -> SimulatedMatchup:
+    """Generate new players from a model and initialize a SimulatedMatchup dataset"""
+    if model is None:
+        model = SyntheticPlayerPool(n_players, center, beta)
 
-    eskill_distribution = (
-        alt.Chart(dataframe)
-        .mark_bar(color="rgba(0, 0, 125, 0.5)")
-        .encode(
-            alt.X(
-                "skill:Q",
-                bin=alt.Bin(maxbins=20),
-                scale=alt.Scale(domain=[1000, 2000]),
-            ),
-            y="count()",
-            color="type",
-        )
-    )
+    if pool is None:
+        pool = [ranker.new_player() for _ in range(n_players)]
 
-    return eskill_distribution
-
-
-def load_skill_evolution(filename):
-    import pandas as pd
-
-    evol = pd.read_csv(filename)
-    model = pd.read_csv("model.csv")
-
-    # This creates a new column with the truth
-    # data = pd.merge(evol, model, how="left", on=["pid"], suffixes=("", "_truth"))
-    n_match = evol["#match"].max()
-    n_players = evol["pid"].min()
-
-    evol["type"] = "estimate"
-    model["type"] = "truth"
-    model["#match"] = 0
-
-    modeln = model.copy()
-    modeln["#match"] = n_match
-
-    data = pd.concat([evol, model, modeln], join="inner")
-    return data[data["pid"] >= n_players]
-
-
-def main(n_matches_bootstrap=100, n_maches_newplayers=20):
-    from ranked.models.glicko2 import Glicko2
-    from ranked.models.noskill import NoSkill
-
-    center = 1500
-    var = 128 * 0.8
-    beta = 128
-    n_players = 100
-
-    ranker = Glicko2(center, var)
-
-    sim = Simulation(ranker, center, var, beta, n_players)
-
-    # Create the initial pool of players
-    print("Bootstrap Player pool")
-    sim.bootstrap(n_matches=n_matches_bootstrap)
-
-    # Check how new players are doing
-    print("Add New PLayers")
-    sim.newplayers(n_matches=n_maches_newplayers)
-
-    print("Compile data")
-    bootstrap = load_skill_evolution("bootstrap.csv")
-    newplayers = load_skill_evolution("newplayers.csv")
-
-    boot_chart = skill_estimate_evolution(bootstrap)
-    new_chart = skill_estimate_evolution(newplayers)
-
-    (boot_chart & new_chart).save("evol.html")
-
-
-if __name__ == "__main__":
-    main()
+    return SimulatedMatchup(ranker, pool, model, n_matches, n_team, n_player_per_team)
