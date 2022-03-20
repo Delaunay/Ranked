@@ -1,7 +1,6 @@
 import math
 from itertools import chain
 
-from numpy import mat
 from trueskill import TrueSkill
 
 from ranked.models import Match, Player, Ranker, Team
@@ -54,9 +53,24 @@ class NoSkill(Ranker):
 
     """
 
+    @staticmethod
+    def parameters(self, center=1500):
+        sigma = center / 3  # center - 3 * sigma = 0
+        sigmav = math.sqrt(sigma)  #
+        beta = math.sqrt((sigma / 2) ** 2)
+        betav = math.sqrt(beta)
+        tau = math.sqrt((sigma / 100) ** 2)
+        tauv = math.sqrt(tau)
+
+        return dict(
+            sigma=f"normal({sigma}, {sigmav})",
+            beta=f"normal({beta}, {betav})",
+            tau=f"normal({tau}, {tauv})",
+        )
+
     def __init__(
         self,
-        mu=35,
+        center=35,
         sigma=None,
         beta=None,
         tau=None,
@@ -64,7 +78,7 @@ class NoSkill(Ranker):
     ) -> None:
 
         if sigma is None:
-            sigma = mu / 3
+            sigma = center / 3
 
         if beta is None:
             beta = sigma / 2
@@ -72,11 +86,11 @@ class NoSkill(Ranker):
         if tau is None:
             tau = sigma / 100
 
-        self.starting_mu = mu
+        self.starting_mu = center
         self.starting_sigma = sigma
 
         self.model = TrueSkill(
-            mu=mu,
+            mu=center,
             sigma=sigma,
             beta=beta,
             tau=tau,
@@ -85,12 +99,6 @@ class NoSkill(Ranker):
         )
 
     def new_player(self, a=None, b=None, *args, **config) -> Player:
-        if a is None:
-            a = self.starting_mu
-
-        if b is None:
-            b = self.starting_sigma
-
         return NoSkillPlayer(self.model.create_rating(a, b), *args)
 
     def new_team(self, *players, **config) -> Team:

@@ -8,29 +8,46 @@ from ranked.models import Batch, Match, Player, Ranker, Team
 
 class SaveEvolution:
     def __init__(self, fname: str, pool, ranker) -> None:
-        self.fs = open(fname, "w")
+        self.fs = None
+        if fname is not None:
+            self.fs = open(fname, "w")
+
         self.header()
         self.ranker = ranker.__class__.__name__
         self.pool = pool
 
         name = fname.rsplit(".", maxsplit=1)[0]
-        self.matchup = open(f"{name}_matchup.csv", "w")
+        self.previous = dict()
 
     def __enter__(self):
         return self
 
     def __exit__(self, *args, **kwargs):
-        self.fs.__exit__(*args, **kwargs)
-        self.matchup.__exit__(*args, **kwargs)
+        if self.fs:
+            self.fs.__exit__(*args, **kwargs)
 
     def header(self):
-        self.fs.write(f"#match,pid,skill,cons,method\n")
+        if not self.fs:
+            return
+
+        self.fs.write(f"#match,pid,skill,cons,method,diff,win\n")
 
     def save(self, iter, method, player_filter=None):
+        if not self.fs:
+            return
+
         rows = []
         for pid, p in enumerate(self.pool):
             if player_filter and pid < player_filter:
                 continue
+
+            win = None
+            diff = None
+            if pid in self.previous:
+                diff = p.skill() - self.previous[pid]
+                win = int(diff > 0)
+
+            self.previous[pid] = p.skill()
 
             cols = [
                 str(iter),
@@ -38,6 +55,8 @@ class SaveEvolution:
                 str(p.skill()),
                 str(p.consistency()),
                 str(self.ranker),
+                str(diff) if diff is not None else "0",
+                str(win) if win is not None else "0",
             ]
             rows.append(", ".join(cols))
 
@@ -84,11 +103,13 @@ class Simulation:
         last_print = 0
 
         with SaveEvolution(statfs, self.matchups.pool, self.ranker) as saver:
+            saver.save(0, self.ranker.__class__.__name__, filter)
+
             for i, batch in enumerate(self.matchups.matches()):
                 # `train`/refine the estimation
                 self.ranker.update(batch)
 
-                saver.save(i, self.ranker.__class__.__name__, filter)
+                saver.save(i + 1, self.ranker.__class__.__name__, filter)
 
                 if (i + 1) % 100 == 0:
                     last_print = i
@@ -97,7 +118,7 @@ class Simulation:
             if i != last_print:
                 print(f"    Simulated {i + 1} matches")
 
-    def benchmark(self):
+    def benchmark(self, playerid=None):
         """Use the latest skill estimate for each player and estimate the win probabilities
         for each matchup, if the Ranker estimated their skill corectly the precision should higher than 50%
         """
@@ -112,9 +133,16 @@ class Simulation:
         diff = 0
         match_count = 0
 
+        player_filter = None
+        if playerid is not None:
+            player_filter = self.matchups.pool[playerid]
+
         for _, batch in enumerate(self.matchups.matches()):
 
             for match in batch.matches:
+                if player_filter and player_filter not in match:
+                    continue
+
                 estimated_leaderboard = []
                 avg = 0
 
@@ -172,39 +200,90 @@ class Simulation:
         return stats
 
 
-def skill_estimate_evolution(dataframe):
+def skill_estimate_evolution(dataframe, title=None):
     import altair as alt
 
+    chart = alt.Chart(dataframe)
+
+    rows = len(dataframe["pid"].unique())
+
+    # Lines
     highlight = alt.selection(
         type="single", on="mouseover", fields=["pid"], nearest=True
     )
 
-    chart = alt.Chart(dataframe).encode(
-        x="#match:Q",
-        y=alt.Y("skill:Q", scale=alt.Scale(domain=[1000, 2000])),
+    no_axe = alt.Axis(labels=False, domain=False, ticks=False)
+
+    min, max = dataframe["skill"].min(), dataframe["skill"].max()
+
+    encoded_lines = chart.encode(
+        x=alt.X("#match:Q", axis=no_axe, title=""),
+        y=alt.Y("skill:Q", scale=alt.Scale(domain=[min, max])),
         color="pid:N",
         strokeDash="type:N",
-    )
+    ).properties(width=600, title=title)
 
     points = (
-        chart.mark_circle()
-        .encode(opacity=alt.value(0))
+        encoded_lines.mark_circle()
+        .encode(opacity=alt.value(int(rows < 10)))
         .add_selection(highlight)
-        .properties(width=600)
     )
 
-    lines = chart.mark_line().encode(
+    highlight_lines = encoded_lines.mark_line().encode(
         size=alt.condition(~highlight, alt.value(1), alt.value(3))
     )
 
-    return points + lines
+    lines = points + highlight_lines
+
+    # put consitency at the bottom
+    x_ticks = (
+        chart.mark_line()
+        .encode(
+            alt.X("#match:Q"),
+            alt.Y("cons:Q", title="volatility"),
+            color="pid:N",
+            strokeDash="type:N",
+            opacity=alt.condition(~highlight, alt.value(0.01), alt.value(1)),
+        )
+        .properties(height=75, width=600)
+    )
+
+    return lines & x_ticks
+
+
+def show_skill_diff_distribution(dataframe):
+    import altair as alt
+
+    df = dataframe.dropna()
+
+    diff_distribution = (
+        alt.Chart(data=df)
+        .mark_bar()
+        .encode(
+            alt.X(
+                "diff:Q",
+                # "x:Q",
+                bin=alt.Bin(maxbins=50),
+            ),
+            y="count()",
+            # color="pid:N",
+        )
+        # .transform_calculate(
+        #    x="abs(datum.diff)",
+        # )
+        .properties(width=600, title="Skill change distribution")
+    )
+
+    return diff_distribution
 
 
 def skill_distribution(dataframe):
     import altair as alt
 
+    df = dataframe.dropna()
+
     eskill_distribution = (
-        alt.Chart(dataframe)
+        alt.Chart(df)
         .mark_bar(color="rgba(0, 0, 125, 0.5)")
         .encode(
             alt.X(
@@ -224,6 +303,7 @@ def load_skill_evolution(filename):
     import pandas as pd
 
     evol = pd.read_csv(filename)
+    evol.fillna("", inplace=True)
     model = pd.read_csv("model.csv")
 
     # This creates a new column with the truth
@@ -238,11 +318,11 @@ def load_skill_evolution(filename):
     modeln = model.copy()
     modeln["#match"] = n_match
 
-    data = pd.concat([evol, model, modeln], join="inner")
+    data = pd.concat([evol, model, modeln])
     return data[data["pid"] >= n_players]
 
 
-def synthetic_main(n_matches_bootstrap=100, n_maches_newplayers=100, n_benchmark=100):
+def synthetic_main(n_matches_bootstrap=100, n_maches_newplayers=20, n_benchmark=100):
     """Simulates player and their skill estimate"""
     print("Synthetic Benchmark")
     print("===================")
@@ -253,7 +333,7 @@ def synthetic_main(n_matches_bootstrap=100, n_maches_newplayers=100, n_benchmark
 
     center = 1500
     var = 64
-    beta = 0
+    beta = 16
     n_players = 100
 
     config = SimulationConfig(
@@ -281,15 +361,16 @@ def synthetic_main(n_matches_bootstrap=100, n_maches_newplayers=100, n_benchmark
     ranker = Glicko2(
         # Useless mostly cosmetic
         center,
-        # How fast can the score change
-        500 / 2,
+        # Impacts how spread out the score are going to be
+        500 / 3,
         # Constrain the volatility change of a player
         # prevent big rating changes from unlikely outcome
-        tau=0.2,
+        tau=0.4,
     )
 
     ranker = NoSkill(
         center,
+        # Impacts how spread out the score are going to be
         500 / 3,
         beta,
         tau=0.2,
@@ -315,7 +396,7 @@ def synthetic_main(n_matches_bootstrap=100, n_maches_newplayers=100, n_benchmark
     print("2. Benchmark")
     matchup.n_matches = n_benchmark
     for k, v in sim.benchmark().items():
-        print(f"{k:>30}: {v}")
+        print(f"{k:>30}: {v:.4f}")
 
     # Check how new players are doing
     print("3. Add New Players")
@@ -334,16 +415,35 @@ def synthetic_main(n_matches_bootstrap=100, n_maches_newplayers=100, n_benchmark
     matchup.n_matches = n_maches_newplayers
     sim.simulate(statfs="newplayers.csv", filter=n_players)
 
+    # Benchmark
+    print("4. New Player Benchmark")
+    matchup.n_matches = n_benchmark
+    for k, v in sim.benchmark(n_players).items():
+        print(f"{k:>30}: {v:.4f}")
+
     # Plot skill estimation trajectories
     print("4. Generate Graphs")
+    generate_viz()
+
+
+def generate_viz():
     bootstrap = load_skill_evolution("bootstrap.csv")
     newplayers = load_skill_evolution("newplayers.csv")
 
-    boot_chart = skill_estimate_evolution(bootstrap)
-    new_chart = skill_estimate_evolution(newplayers)
+    boot_chart = skill_estimate_evolution(
+        bootstrap,
+        "Skill Estimation Trajectories (All New Players)",
+    )
+    new_chart = skill_estimate_evolution(
+        newplayers,
+        "Skill Estimation Trajectories  (One New Players to an existing player pool)",
+    )
 
-    (boot_chart & new_chart).save("evol.html")
+    diff = show_skill_diff_distribution(bootstrap)
+
+    (boot_chart & new_chart & diff).save("evol.html")
 
 
 if __name__ == "__main__":
     synthetic_main()
+    # generate_viz()

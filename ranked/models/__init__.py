@@ -14,6 +14,9 @@ class Player:
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(s={self.skill():4.2f})"
 
+    def to_json(self):
+        return dict(skill=self.skill(), cons=self.consistency())
+
 
 class Team(Player):
     """Combine multiple players and make them look like one to the ranking algorithm.
@@ -27,6 +30,9 @@ class Team(Player):
     def skill(self) -> float:
         """Returns the estimated skill of this team"""
         return sum([player.skill() for player in self.players])
+
+    def __contains__(self, player):
+        return player in self.players
 
     def __len__(self):
         return len(self.players)
@@ -49,6 +55,9 @@ class Match:
         self.players = [p for p, _ in leaderboard]
         self.scores = [r for _, r in leaderboard]
         self.leaderboard = leaderboard
+
+    def __contains__(self, player):
+        return any([player in team or player is team for team in self.teams])
 
     @property
     def teams(self):
@@ -100,6 +109,11 @@ class Batch:
 
 
 class Ranker:
+    @staticmethod
+    def parameters(self, center) -> dict:
+        """Returns a dictionary of hyperparameter to be tuned"""
+        return dict()
+
     def new_player(self, *args, **config) -> Player:
         """Builds a new player, this enable the Ranker to initialize it if needed"""
         raise NotImplementedError()

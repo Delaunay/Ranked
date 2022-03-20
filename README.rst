@@ -34,7 +34,8 @@ ranked
 
 
 
-Features:
+Features
+~~~~~~~~
 
 * A common interface for ranking algorithms
 * Elo (Chess & Generic)
@@ -42,6 +43,8 @@ Features:
 * NoSkill (similar to Trueskill, i.e bayesian inference on a bipartite graph)
 * Synthetics benchmarks
 * Basic match maker
+* Matchup replay to calibrate and experiment on real data
+* Model calibration using black-box optimizer Orion
 
 
 .. note::
@@ -65,15 +68,13 @@ WIP
 ---
 
 * NoSkill2
-* Benchmarking suite to test each ranking algorithm
-
-   * Dota2 extracted matches
-
-
-* Model calibration utilities (hyper parameter search) with Orion
+* Dota2 extracted matches
+* publish to Pypi
 
 
 .. code-block:: bash
 
    pip install ranked
 
+
+.. image:: https://github.com/Delaunay/Ranked/blob/master/docs/_static/example.png?raw=true

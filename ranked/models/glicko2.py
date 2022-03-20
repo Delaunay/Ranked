@@ -55,6 +55,7 @@ class Glicko2Team(Team):
     def volatility(self):
         if self._volatility is None:
             self._volatility = math.sqrt(sum([p.volatility ** 2 for p in self.players]))
+
         return self._volatility
 
     @rating.setter
@@ -68,6 +69,12 @@ class Glicko2Team(Team):
 
     @deviation.setter
     def deviation(self, value):
+        # Volatility of the team is sqrt(sum(players))
+        #   i.e the volatility of the overall team is not proportional
+        #
+        # Because we only observe the result of the overall team
+        # we cant really estimate the deviation of individual players
+
         diff = value - self.deviation
 
         for p in self.players:
@@ -103,28 +110,39 @@ class Glicko2(Ranker):
     """Glicko extend the Elo system to take into account the consistency/reliability of the skill"""
 
     # System constants
-    TAU = (0.3 + 1.2) / 2
-    TAU = 0.5
     EPS = 0.000001
 
-    CENTER = 1500
-    SCALE = 173.7178
+    @staticmethod
+    def parameters(self, center=1500):
+        sigma = center / 3  # center - 3 * sigma = 0
+        sigmav = math.sqrt(sigma)  #
 
-    def __init__(self, center=None, scale=None, tau=None) -> None:
-        if tau is not None:
-            self.TAU = tau
+        return dict(
+            scale=f"normal({sigma}, {sigmav})",
+            tau="uniform(0.2, 2)",
+            # starting values
+            deviation=f"uniform({sigma}, {sigmav})",
+            vol="uniform(0.01, 1)",
+        )
 
-        if center is not None:
-            self.CENTER = center
+    def __init__(
+        self, center=1500, scale=173.7178, tau=0.6, deviation=None, vol=None
+    ) -> None:
+        self.tau = tau
+        self.center = center
+        self.scale = scale
 
-        if scale is not None:
-            self.SCALE = scale
+        if deviation is None:
+            deviation = self.scale * 1.2
+
+        if vol is None:
+            vol = self.tau / 2
 
         self.cache = dict()
         self.hits = defaultdict(int)
-        self.starting_rating = self.CENTER
-        self.starting_dev = self.SCALE * 1.2
-        self.starting_vol = self.TAU / 2
+        self.starting_rating = self.center
+        self.starting_dev = deviation
+        self.starting_vol = vol
 
     def new_player(self, *args) -> Glicko2Player:
         if len(args):
@@ -141,11 +159,11 @@ class Glicko2(Ranker):
 
     @cache
     def mu(self, player: Glicko2Player) -> float:
-        return (player.rating - self.CENTER) / self.SCALE
+        return (player.rating - self.center) / self.scale
 
     @cache
     def phi(self, player: Glicko2Player) -> float:
-        return player.deviation / self.SCALE
+        return player.deviation / self.scale
 
     @cache
     def g(self, player: Glicko2Player) -> float:
@@ -199,7 +217,7 @@ class Glicko2(Ranker):
             top = math.exp(x) * (delta ** 2 - self.phi(player) ** 2 - v - math.exp(x))
             bot = 2 * (self.phi(player) ** 2 + v + math.exp(x)) ** 2
 
-            return top / bot - (x - ca) / self.TAU ** 2
+            return top / bot - (x - ca) / self.tau ** 2
 
         # Find bounds
         a = math.log(player.volatility ** 2)
@@ -209,9 +227,9 @@ class Glicko2(Ranker):
 
         else:
             k = 1
-            while f(a - k * self.TAU) < 0:
+            while f(a - k * self.tau) < 0:
                 k += 1
-            b = a - k * self.TAU
+            b = a - k * self.tau
 
         # Iterate to find
         fa = f(a)
@@ -248,8 +266,8 @@ class Glicko2(Ranker):
 
         mu_p = self.mu(player) + phi_p ** 2 * score
 
-        new_rating = self.SCALE * mu_p + self.CENTER
-        new_deviation = self.SCALE * phi_p
+        new_rating = self.scale * mu_p + self.center
+        new_deviation = self.scale * phi_p
 
         return new_rating, new_deviation, sp
 

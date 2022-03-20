@@ -22,6 +22,9 @@ class MatchupReplaySaver:
     def __exit__(self, *args, **kwargs):
         self.replay.__exit__(*args, **kwargs)
 
+    def save_pool(self, pool):
+        self.replay.write(json.dumps([p.to_json() for p in pool]) + "\n")
+
     def save(self, batch, teams: List[List[int]], match: Match):
         cols = []
         for (team_obj, score), team in zip(match.leaderboard, teams):
@@ -186,6 +189,7 @@ class SimulatedMatchup(Matchup):
         """Enable saving of the matchup during a simulation"""
         self.saver = MatchupReplaySaver(fname)
         self.saver.save_model(self.model)
+        self.saver.save_pool(self._pool)
 
     def add_player(self, *args):
         """Insert new players to the player pool"""
