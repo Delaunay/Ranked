@@ -1,7 +1,7 @@
 from typing import Tuple
 
-from ranked.models.glicko2 import Glicko2
 from ranked.models import Batch, Match, Player
+from ranked.models.glicko2 import Glicko2
 
 
 def nearly(a, b, eps=0.0001):

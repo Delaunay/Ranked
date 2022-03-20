@@ -1,7 +1,8 @@
 from typing import Tuple
 
-from ranked.models.elo import ChessElo, Elo
 from ranked.models import Batch, Match, Player, Ranker
+from ranked.models.elo import Elo
+from ranked.models.elochess import ChessElo
 
 
 def nearly(a, b, eps=0.0001):

@@ -1,5 +1,7 @@
 from typing import Sequence, Union
 
+from ranked.utils import fetch_factories
+
 
 class Player:
     def skill(self) -> float:
@@ -131,3 +133,16 @@ class Ranker:
         """Default implementation calls ``update_match`` sequentially"""
         for match in matches:
             self.update_match(match)
+
+
+registered_models = fetch_factories("ranked.models", __file__, "make")
+
+
+def make(name, *args, **kwargs) -> Ranker:
+    """Builds the requested Ranker"""
+    ctor = registered_models.get(name)
+
+    if ctor is None:
+        raise RuntimeError(f"Ranker {name} was not defined")
+
+    return ctor(*args, **kwargs)

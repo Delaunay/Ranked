@@ -1,16 +1,26 @@
 #!/usr/bin/env python
 from setuptools import setup
 
+import os
+
+repo_root = os.path.dirname(os.path.abspath(__file__))
+
 
 args = dict(
     name="ranked",
-    version="0.0.0",
+    version="0.0.1",
     description="Player Ranking Algorithm benchmarks",
+    long_description=open(
+        os.path.join(repo_root, "README.rst"), "rt", encoding="utf8"
+    ).read(),
     author="Pierre Delaunay",
+    author_email="pierre@delaunay.io",
+    url="https://github.com/Delaunay/Ranked",
     packages=[
         "ranked",
         "ranked.models",
         "ranked.datasets",
+        "ranked.utils",
     ],
     install_requires=[
         "scipy",

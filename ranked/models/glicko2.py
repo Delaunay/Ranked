@@ -280,3 +280,7 @@ class Glicko2(Ranker):
         player.rating = r
         player.deviation = d
         player.volatility = v
+
+
+def make(*args, **kwargs):
+    return Glicko2(*args, **kwargs)

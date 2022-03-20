@@ -124,3 +124,7 @@ class NoSkill(Ranker):
         ) in zip(teams, new_ratings):
             for p, rating in zip(team, ratings):
                 p.rating = rating
+
+
+def make(*args, **kwargs):
+    return NoSkill(*args, **kwargs)
