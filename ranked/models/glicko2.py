@@ -2,7 +2,7 @@ import math
 from collections import defaultdict
 from typing import Tuple
 
-from ranked.models.interface import Batch, Match, Player, Ranker, Team
+from ranked.models import Batch, Match, Player, Ranker, Team
 
 
 class Glicko2Player(Player):
@@ -122,9 +122,19 @@ class Glicko2(Ranker):
 
         self.cache = dict()
         self.hits = defaultdict(int)
+        self.starting_rating = self.CENTER
+        self.starting_dev = self.SCALE * 1.2
+        self.starting_vol = self.TAU / 2
 
     def new_player(self, *args) -> Glicko2Player:
-        return Glicko2Player(*args)
+        if len(args):
+            return Glicko2Player(*args)
+
+        return Glicko2Player(
+            self.starting_rating,
+            self.starting_dev,
+            self.starting_vol,
+        )
 
     def new_team(self, *players, **config) -> Glicko2Team:
         return Glicko2Team(*players, **config)

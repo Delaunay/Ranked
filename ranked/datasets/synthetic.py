@@ -1,12 +1,13 @@
 import json
 import math
+from dataclasses import dataclass
 from typing import List, Tuple
 
 from scipy.stats import norm, uniform
 
-from ranked.datasets.interface import Matchup
+from ranked.datasets import Matchup
 from ranked.matchmaker import Matchmaker
-from ranked.models.interface import Batch, Match, Player, Ranker, Team
+from ranked.models import Batch, Match, Player, Ranker, Team
 
 
 class MatchupReplaySaver:
@@ -68,13 +69,25 @@ class GenPlayer:
         return (self.skill, self.consistency)
 
 
+@dataclass
+class SimulationConfig:
+    skill_mean: float = 25
+    skill_volatility: float = 25 / 3
+    consistency_variability_lower: float = 0
+    consistency_variability_upper: float = 10
+    game_randomness: float = 1
+
+
 class SyntheticPlayerPool:
     """Simulate a pool of players and their performance"""
 
-    def __init__(self, count, smu=25, svol=25 / 3) -> None:
-        self.skill_distribution = norm(smu, svol)
-        self.consistency_distribution = uniform(smu ** -4, math.sqrt(smu))
-        self.perf_vol = svol / 2
+    def __init__(self, count, config: SimulationConfig = SimulationConfig()) -> None:
+        self.skill_distribution = norm(config.skill_mean, config.skill_volatility)
+        self.consistency_distribution = uniform(
+            config.consistency_variability_lower,
+            config.consistency_variability_upper,
+        )
+        self.perf_vol = config.game_randomness
         self.player_pool = [self.new_player() for _ in range(count)]
 
     @property
@@ -226,17 +239,16 @@ class SimulatedMatchup(Matchup):
 def create_simulated_matchups(
     ranker,
     n_players,
-    center,
-    beta,
     n_matches,
     n_team,
     n_player_per_team,
+    config=SimulationConfig(),
     pool=None,
     model=None,
 ) -> SimulatedMatchup:
     """Generate new players from a model and initialize a SimulatedMatchup dataset"""
     if model is None:
-        model = SyntheticPlayerPool(n_players, center, beta)
+        model = SyntheticPlayerPool(n_players, config)
 
     if pool is None:
         pool = [ranker.new_player() for _ in range(n_players)]

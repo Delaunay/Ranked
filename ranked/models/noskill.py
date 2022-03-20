@@ -4,7 +4,7 @@ from itertools import chain
 from numpy import mat
 from trueskill import TrueSkill
 
-from ranked.models.interface import Match, Player, Ranker, Team
+from ranked.models import Match, Player, Ranker, Team
 
 
 class NoSkillPlayer(Player):
@@ -72,6 +72,9 @@ class NoSkill(Ranker):
         if tau is None:
             tau = sigma / 100
 
+        self.starting_mu = mu
+        self.starting_sigma = sigma
+
         self.model = TrueSkill(
             mu=mu,
             sigma=sigma,
@@ -81,7 +84,13 @@ class NoSkill(Ranker):
             backend="scipy",
         )
 
-    def new_player(self, a, b, *args, **config) -> Player:
+    def new_player(self, a=None, b=None, *args, **config) -> Player:
+        if a is None:
+            a = self.starting_mu
+
+        if b is None:
+            b = self.starting_sigma
+
         return NoSkillPlayer(self.model.create_rating(a, b), *args)
 
     def new_team(self, *players, **config) -> Team:

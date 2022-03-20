@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from ranked.models.interface import Batch, Match, Player, Ranker
+from ranked.models import Batch, Match, Player, Ranker
 from ranked.models.noskill import NoSkill
 
 

@@ -1,4 +1,4 @@
-from ranked.models.interface import Batch
+from ranked.models import Batch
 
 
 class Matchup:

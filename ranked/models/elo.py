@@ -2,7 +2,7 @@ import math
 
 from scipy.stats import norm
 
-from ranked.models.interface import Match, Player, Ranker, Team
+from ranked.models import Match, Player, Ranker, Team
 
 
 class EloPlayer(Player):

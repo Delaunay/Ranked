@@ -1,7 +1,7 @@
 import json
 
-from ranked.datasets.interface import Matchup
-from ranked.models.interface import Batch, Match
+from ranked.datasets import Matchup
+from ranked.models import Batch, Match
 
 
 class ReplayMatchup(Matchup):
@@ -37,15 +37,17 @@ class ReplayMatchup(Matchup):
                 #
                 match = json.loads(line)
 
-                batch = match.get('batch')
-                teams = match.get('teams')
+                batch = match.get("batch")
+                teams = match.get("teams")
                 leaderboard = []
 
                 for team in teams:
-                    players = team['players']
-                    score = team['score']
+                    players = team["players"]
+                    score = team["score"]
 
-                    t1 = self.ranker.new_team(*[self.pool[player_id] for player_id in players])
+                    t1 = self.ranker.new_team(
+                        *[self.pool[player_id] for player_id in players]
+                    )
                     leaderboard.append((t1, score))
 
                 m = Match(*leaderboard)

@@ -3,7 +3,7 @@ from collections import defaultdict
 from nis import match
 from typing import List
 
-from ranked.models.interface import Batch, Match, Player, Ranker, Team
+from ranked.models import Batch, Match, Player, Ranker, Team
 
 
 class SaveEvolution:
@@ -242,31 +242,67 @@ def load_skill_evolution(filename):
     return data[data["pid"] >= n_players]
 
 
-def synthetic_main(n_matches_bootstrap=100, n_maches_newplayers=20, n_benchmark=100):
+def synthetic_main(n_matches_bootstrap=100, n_maches_newplayers=100, n_benchmark=100):
     """Simulates player and their skill estimate"""
     print("Synthetic Benchmark")
     print("===================")
 
+    from ranked.datasets.synthetic import SimulationConfig, create_simulated_matchups
     from ranked.models.glicko2 import Glicko2
     from ranked.models.noskill import NoSkill
 
-    from ranked.datasets.synthetic import create_simulated_matchups
-
     center = 1500
-    var = 128
-    beta = 128
+    var = 64
+    beta = 0
     n_players = 100
 
-    ranker = Glicko2(center, var)
+    config = SimulationConfig(
+        # Distribution of the skills of the entire player pool
+        #   How spread the skill is between players
+        #   This is a representation on how complex your game is
+        skill_mean=center,
+        skill_volatility=500 / 3,  # so the results are [1000, 200]
+        # Consistency of the players (innate)
+        #   The more consistent player are the faster they will
+        #   reach their true skill level
+        consistency_variability_lower=var / 2,
+        consistency_variability_upper=var,
+        # How randomness impacts the player' score
+        #   More randomness will make it harder for the Ranker
+        #   to identify the player's true skill level
+        game_randomness=beta,
+    )
+
+    # Note that the number representing the skill
+    # is totally arbitrary because we are in a simulation
+    # we know the real value and we set our ranker
+    # to match the simulation to help with interpreting the
+    # results but the scale between the two could be different
+    ranker = Glicko2(
+        # Useless mostly cosmetic
+        center,
+        # How fast can the score change
+        500 / 2,
+        # Constrain the volatility change of a player
+        # prevent big rating changes from unlikely outcome
+        tau=0.2,
+    )
+
+    ranker = NoSkill(
+        center,
+        500 / 3,
+        beta,
+        tau=0.2,
+        draw_probability=0,
+    )
 
     matchup = create_simulated_matchups(
         ranker,
         n_players,
-        center,
-        beta,
         n_matches=n_matches_bootstrap,
         n_team=2,
         n_player_per_team=5,
+        config=config,
     )
 
     sim = Simulation(ranker, matchup)
@@ -287,8 +323,10 @@ def synthetic_main(n_matches_bootstrap=100, n_maches_newplayers=20, n_benchmark=
     # Current pool of players have a perfect estimate
     matchup.set_estimate_to_truth()
 
+    # If we add 2 players at the same time they might endup being
+    # teamed up together
     matchup.add_player(center + 3 * var, var * 0.5)
-    matchup.add_player(center - 3 * var, var * 0.5)
+    # matchup.add_player(center - 3 * var, var * 0.5)
 
     # force save the new model with the new players
     matchup.save("matchup.csv")
