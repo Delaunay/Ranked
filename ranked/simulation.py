@@ -219,7 +219,7 @@ def skill_estimate_evolution(dataframe, title=None):
     encoded_lines = chart.encode(
         x=alt.X("#match:Q", axis=no_axe, title=""),
         y=alt.Y("skill:Q", scale=alt.Scale(domain=[min, max])),
-        color="pid:N",
+        color=alt.Color("pid:N", legend=alt.Legend(title="Players")),
         strokeDash="type:N",
     ).properties(width=600, title=title)
 
@@ -243,7 +243,11 @@ def skill_estimate_evolution(dataframe, title=None):
             alt.Y("cons:Q", title="volatility"),
             color="pid:N",
             strokeDash="type:N",
-            opacity=alt.condition(~highlight, alt.value(0.01), alt.value(1)),
+            # opacity=alt.condition(~highlight, alt.value(0.5), alt.value(1)),
+            # alt.Opacity(
+            #    condition=alt.condition(~highlight, alt.value(0.1), alt.value(1)),
+            #    legend=None,
+            # ),
         )
         .properties(height=75, width=600)
     )
@@ -445,5 +449,5 @@ def generate_viz():
 
 
 if __name__ == "__main__":
-    synthetic_main()
-    # generate_viz()
+    # synthetic_main()
+    generate_viz()
