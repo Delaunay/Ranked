@@ -633,6 +633,9 @@ if __name__ == "__main__":
     try:
         builder = Dota2MatchDatasetBuilder()
 
+        # the problem with both approaches is that
+        # most players are all unique or Anonymous
+        # so it is hard to build a database for it
         Dota2MatchQuery(builder, 6486086331).run()
         # Dota2MatchDumper(builder, 6486086331).run()
 
