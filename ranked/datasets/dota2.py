@@ -1,19 +1,19 @@
 """Used to query SteamAPI to get dota match information to bootstrap bots"""
+import datetime
+import gzip
+import json
+import logging
+import os
+import time
+import zipfile
 from collections import defaultdict
 from dataclasses import dataclass
-import json
-import time
-import logging
-from typing import List
-import zipfile
-import os
-import gzip
-import datetime
-import requests
 from enum import IntEnum
+from typing import List
 
-from ranked.utils.webapi import WebAPI, ServerError, LimitExceeded
+import requests
 
+from ranked.utils.webapi import LimitExceeded, ServerError, WebAPI
 
 logger = logging.getLogger(__name__)
 
@@ -318,16 +318,17 @@ class SteamAPI(WebAPI):
 class Dota2MatchDumper:
     """Dump match data to a file"""
 
-    def __init__(self) -> None:
+    def __init__(self, builder, start_match) -> None:
         self.api = SteamAPI()
         self.skill = 3
         self.latest_date = None
-        self.start_match_id = 6486086322 - 100000
+        self.start_match_id = start_match
         self.latest_match = None
         self.known_match = defaultdict(int)
         self.counts = defaultdict(int)
         self.matches = 0
         self.running = True
+        self.builder = builder
 
         # Tweak the sleeps to avoid duplicates
         # Sleeps are not there for the lulz or even to be nice to valve
@@ -345,7 +346,8 @@ class Dota2MatchDumper:
 
     def write_match(self, dataset, match_id, data):
         self.counts[DOTA_GameMode(data.get("game_mode", 0)).name] += 1
-        dataset.write(json.dumps(dict(id=match_id, match=data)) + "\n")
+        self.builder.process_match(match_id, data)
+        # dataset.write(json.dumps(dict(id=match_id, match=data)) + "\n")
 
     def get_match_detail(self, match_id):
         for i in range(self.error_retry):
@@ -357,7 +359,7 @@ class Dota2MatchDumper:
                 print("Error retrying {err}")
                 time.sleep(self.error_sleep)
 
-    def brute_search(self, dataset):
+    def brute_search(self, dataset=None):
         """Use a match id and fetch all the matches around it"""
         match_id = self.latest_match
         k = 0
@@ -401,41 +403,130 @@ class Dota2MatchDumper:
                 )
                 print(json.dumps(self.counts, indent=2))
 
-    def run(self, name):
-        if os.path.exists(name):
-            print("Cannot override existing file")
-            return
+    def run(self):
+        # if os.path.exists(name):
+        #    print("Cannot override existing file")
+        #    return
 
         server_error = 0
         self.latest_match = self.start_match_id
+        self.running = True
+        while self.running:
+            try:
+                self.brute_search(dataset=None)
 
-        with open(name, mode="w") as dataset:
-            self.running = True
-            while self.running:
-                try:
-                    self.brute_search(dataset)
+                print(f"+> Batch done")
+                time.sleep(self.batch_sleep)
+                print(f"+> Fetching next 500 matches {self.status()}")
+            except KeyboardInterrupt:
+                self.running = False
 
-                    print(f"+> Batch done")
-                    time.sleep(self.batch_sleep)
-                    print(f"+> Fetching next 500 matches {self.status()}")
-                except KeyboardInterrupt:
+            except ServerError:
+                server_error += 1
+                print("+> Server error retrying")
+                if server_error > 3:
                     self.running = False
 
-                except ServerError:
-                    server_error += 1
-                    print("+> Server error retrying")
-                    if server_error > 3:
-                        self.running = False
+            except LimitExceeded:
+                self.running = False
 
-                except LimitExceeded:
-                    self.running = False
-
-                except requests.ConnectionError:
-                    pass
+            except requests.ConnectionError:
+                pass
 
         print(
-            f"> Unique Match processed: {len(self.known_match)} Total match: {self.matches}"
+            f"> Unique Match processed: {len(self.known_match)} Total match: {self.matches}, lastMatch = {self.latest_match}"
         )
+
+
+class Dota2MatchQuery(Dota2MatchDumper):
+    def __init__(self, builder, start_match) -> None:
+        super().__init__(builder, start_match)
+        self.mode = DOTA_GameMode.DOTA_GAMEMODE_AP
+        self.pending_matches = []
+        self.skill = 1
+
+    def update_latest_date(self, date):
+        if self.latest_date is None:
+            self.latest_date = date
+        else:
+            self.latest_date = max(date, self.latest_date) + 1
+
+    def update_latest_match(self, match):
+        if self.latest_match is None:
+            self.latest_match = match
+        else:
+            self.latest_match = max(match, self.latest_match) + 1
+
+    def status(self):
+        api_call_limit = f"API: {self.api.limit_stats() * 100:6.2f}%"
+        match = f"Matches: {self.matches} (unique: {len(self.known_match) * 100 / self.matches:6.2f}%)"
+        return f"{api_call_limit} {match}"
+
+    def get_match_history(self, start_at_match_id):
+        for i in range(self.error_retry):
+            try:
+                return self.api.get_match_history(
+                    skill=self.skill,
+                    min_players=10,
+                    count=500,
+                    date_min=self.latest_date,
+                    start_at_match_id=start_at_match_id,
+                    mode=int(self.mode),
+                )
+            except KeyboardInterrupt:
+                raise
+            except Exception as err:
+                print(f"Error retrying {err}")
+                time.sleep(self.error_sleep)
+
+    def brute_search(self, dataset=None):
+        """Fetch new matches"""
+        # date_min does not work, we get a lot of duplicate really fast
+        # start_at_match_id does not work at all it does seem that the doc was correct and get older match from that id
+        remaining = None
+        total = None
+        results = None
+        start_at_match_id = None
+
+        while remaining is None or remaining > 0:
+            result = self.get_match_history(start_at_match_id)
+
+            matches = result["matches"]
+            results = result["num_results"]
+            total = result["total_results"]
+            remaining = result["results_remaining"]
+
+            if len(matches) > 0:
+                start_at_match_id = matches[-1]["match_id"] + 1
+                self.pending_matches.extend(matches)
+
+        print(f"+-> Found {len(self.pending_matches)} matches")
+        print(f"        - Results: {results}")
+        print(f"        - Total: {total}")
+        print(f"        - Remaining: {remaining}")
+
+        while self.pending_matches:
+            match = self.pending_matches.pop()
+            match_id = match["match_id"]
+
+            self.update_latest_date(match["start_time"])
+            self.update_latest_match(match_id)
+
+            # We shouldnt see this error if we do be sure we track it to see
+            self.known_match[match_id] += 1
+            count = self.known_match[match_id]
+            self.matches += 1
+            if count != 1:
+                print(f"+-+> Match duplicate {count} {self.status()}")
+                continue
+            # ----
+            details = self.get_match_detail(match_id)
+            if details is None:
+                time.sleep(self.error_sleep)
+                continue
+
+            self.write_match(dataset, match_id, details)
+            time.sleep(self.match_sleep)
 
 
 class Dota2MatchDatasetBuilder:
@@ -447,12 +538,48 @@ class Dota2MatchDatasetBuilder:
         # nunber of time the player was included
         self.player_included = defaultdict(int)
 
-        with open("dump.json", "r") as file:
-            for line in file.readlines():
-                data = json.loads(line)
-                self.process_match(data["id"], data["match"])
+    def save(self):
+        k = 0
+        while os.path.exists(f"batches_{k}.json"):
+            k += 1
+
+        print(self.batches)
+
+        with open(f"batches_{k}.json", "w") as fs:
+            for i in range(len(self.batches)):
+                fs.write(json.dumps(dict(batch=i, matches=self.batches[i])) + "\n")
+
+                print(i, len(self.batches[i]))
+
+        with open(f"player_{k}.json", "w") as fs:
+            fs.write(json.dumps(dict(n=self.n, player_id=self.player_id)))
+
+        print(f"N players {self.n}")
+
+    def is_valid(self, data):
+        if data.get("radiant_win") is None:
+            print(f"Missing dictionnary key radiant_win {data}")
+            return False
+
+        # Sanity check
+        for p in data["players"]:
+            accid = p.get("account_id")
+            slot = p.get("player_slot")
+
+            if accid is None:
+                print(f"Missing dictionnary key account_id {data}")
+                return False
+
+            if slot is None:
+                print(f"Missing dictionnary key player_slot {data}")
+                return False
+
+        return True
 
     def process_match(self, match_id, data):
+        if not self.is_valid(data):
+            return
+
         radiant_win = int(data["radiant_win"])
 
         radiant_players = []
@@ -464,48 +591,53 @@ class Dota2MatchDatasetBuilder:
         match = [radiant_pair, dire_pair]
         batch = 0
 
-        # Sanity check
-        # Skip the match if players are not unique
-        team = dict()
-        for p in data["players"]:
-            accid = p["account_id"]
-
-            if accid in team:
-                print("Same account for the same match")
-                return
-
-            team[accid] = 1
-
         # process the match
         for p in data["players"]:
-            accid = p["account_id"]
+            accid = p.get("account_id")
 
-            self.player_included[accid] += 1
-            batch = max(batch, self.player_included[accid])
+            batch = max(batch, self.get_player_count(accid) - 1)
 
             if p["player_slot"] < 5:
                 arr = radiant_players
             else:
                 arr = dire_players
 
-            newid = self.player_id.get(accid)
-
-            if newid is None:
-                newid = self.n
-                self.n += 1
-                self.player_id[accid] = newid
-
+            newid = self.get_player_id(accid)
             arr.append(newid)
 
+        print("Append", batch, match)
         self.batches[batch].append(match)
+
+    def get_player_count(self, accid):
+        if accid == 4294967295:
+            return 1
+
+        self.player_included[accid] += 1
+        return self.player_included[accid]
+
+    def get_player_id(self, accid):
+        newid = self.player_id.get(accid)
+
+        # if newid is none of account is annonymous
+        if accid == 4294967295 or newid is None:
+            newid = self.n
+            self.n += 1
+            self.player_id[accid] = newid
+
+        return newid
 
 
 if __name__ == "__main__":
-    # logging.basicConfig(level=logging.DEBUG)
-    # Dota2MatchReplayBuilder().run("out.json")
+    logging.basicConfig(level=logging.DEBUG)
 
-    b = Dota2MatchDatasetBuilder()
+    try:
+        builder = Dota2MatchDatasetBuilder()
 
-    print(b.player_included)
-    for k, v in b.batches.items():
-        print(k, v)
+        Dota2MatchQuery(builder, 6486086331).run()
+        # Dota2MatchDumper(builder, 6486086331).run()
+
+    except KeyboardInterrupt:
+        pass
+
+    builder.save()
+    print("Writing done")
