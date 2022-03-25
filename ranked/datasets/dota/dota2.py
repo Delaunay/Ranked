@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import time
+from tracemalloc import start
 import zipfile
 from collections import defaultdict
 from dataclasses import dataclass
@@ -252,6 +253,7 @@ class SteamAPI(WebAPI):
         league_id=None,
         date_min=None,
         start_at_match_id=None,
+        account_id=None,
     ) -> MatchHistory:
         # Results are limited 500 per query
         params = {
@@ -262,7 +264,7 @@ class SteamAPI(WebAPI):
             "key": STEAM_API_KEY,
             "league_id": league_id,
             "start_at_match_id": start_at_match_id,
-            "account_id": None,
+            "account_id": account_id,
             # Docs say `Start searching for matches equal to or older than this match ID.`
             # which does not make sense, I want newer match not older one
             # date_max
@@ -356,7 +358,7 @@ class Dota2MatchDumper:
             except KeyboardInterrupt:
                 raise
             except Exception as err:
-                print("Error retrying {err}")
+                print(f"Error retrying {err}")
                 time.sleep(self.error_sleep)
 
     def brute_search(self, dataset=None):
@@ -439,7 +441,7 @@ class Dota2MatchDumper:
 
 
 class Dota2MatchQuery(Dota2MatchDumper):
-    def __init__(self, builder, start_match) -> None:
+    def __init__(self, builder, start_match=None) -> None:
         super().__init__(builder, start_match)
         self.mode = DOTA_GameMode.DOTA_GAMEMODE_AP
         self.pending_matches = []
@@ -479,10 +481,11 @@ class Dota2MatchQuery(Dota2MatchDumper):
                 print(f"Error retrying {err}")
                 time.sleep(self.error_sleep)
 
-    def brute_search(self, dataset=None):
-        """Fetch new matches"""
+
+    def fetch_match_ids(self):
         # date_min does not work, we get a lot of duplicate really fast
         # start_at_match_id does not work at all it does seem that the doc was correct and get older match from that id
+
         remaining = None
         total = None
         results = None
@@ -504,6 +507,10 @@ class Dota2MatchQuery(Dota2MatchDumper):
         print(f"        - Results: {results}")
         print(f"        - Total: {total}")
         print(f"        - Remaining: {remaining}")
+
+    def brute_search(self, dataset=None):
+        """Fetch new matches"""
+        self.fetch_match_ids()
 
         while self.pending_matches:
             match = self.pending_matches.pop()
@@ -532,28 +539,26 @@ class Dota2MatchQuery(Dota2MatchDumper):
 class Dota2MatchDatasetBuilder:
     def __init__(self) -> None:
         self.n = 0
+        self.m = 0
+        self.q = 0
         self.player_id = dict()
-        self.batches = defaultdict(list)
 
         # nunber of time the player was included
         self.player_included = defaultdict(int)
+        self.k = 0
+        self.batches = None
+        self.open_files()
+
+    def open_files(self):
+        self.k = 0
+        while os.path.exists(f"batches_{self.k}.json"):
+            self.k += 1
+
+        self.batches = open(f"batches_{self.k}.json", "w")
 
     def save(self):
-        k = 0
-        while os.path.exists(f"batches_{k}.json"):
-            k += 1
-
-        print(self.batches)
-
-        with open(f"batches_{k}.json", "w") as fs:
-            for i in range(len(self.batches)):
-                fs.write(json.dumps(dict(batch=i, matches=self.batches[i])) + "\n")
-
-                print(i, len(self.batches[i]))
-
-        with open(f"player_{k}.json", "w") as fs:
+        with open(f"player_{self.k}.json", "w") as fs:
             fs.write(json.dumps(dict(n=self.n, player_id=self.player_id)))
-
         print(f"N players {self.n}")
 
     def is_valid(self, data):
@@ -605,8 +610,8 @@ class Dota2MatchDatasetBuilder:
             newid = self.get_player_id(accid)
             arr.append(newid)
 
-        print("Append", batch, match)
-        self.batches[batch].append(match)
+        print(f"Unique players {self.n / self.m * 100:5.2f} (Players: {self.n}) (Queryable: {self.q})")
+        self.batches.write(json.dumps(dict(batch=batch, id=match_id, matches=match)) + "\n")
 
     def get_player_count(self, accid):
         if accid == 4294967295:
@@ -622,9 +627,120 @@ class Dota2MatchDatasetBuilder:
         if accid == 4294967295 or newid is None:
             newid = self.n
             self.n += 1
-            self.player_id[accid] = newid
 
+            # only save players if we can rely on its account id
+            if accid != 4294967295:
+                self.player_id[accid] = newid
+                self.q += 1
+
+        self.m += 1
         return newid
+
+
+
+def read_players():
+    player_ids = dict()
+    n = 0
+    k = 0
+    while os.path.exists(f"player_{k}.json"):
+        with open(f"player_{k}.json", "r") as players:
+            ids = json.load(players)['player_id']
+
+            for accid, _ in ids.items():
+                if accid in player_ids:
+                    print('Player is duplicated', accid)
+                    continue
+
+                player_ids[accid] = n
+                n += 1
+        k += 1
+    print(n)
+    return list(sorted(list(player_ids.keys())))
+
+class Dota2PlayerMatchHistoryQuery(Dota2MatchQuery):
+    def __init__(self, players, builder) -> None:
+        super().__init__(builder)
+        self.players = players
+
+    def get_match_history_for_player(self, account_id, start_at_match_id):
+        for i in range(self.error_retry):
+            try:
+                return self.api.get_match_history(
+                    skill=self.skill,
+                    min_players=10,
+                    count=500,
+                    date_min=self.latest_date,
+                    start_at_match_id=start_at_match_id,
+                    account_id=account_id,
+                    mode=int(self.mode),
+                )
+            except KeyboardInterrupt:
+                raise
+            except Exception as err:
+                print(f"Error retrying {err}")
+                time.sleep(self.error_sleep)
+
+    def fetch_match_ids(self):
+        # date_min does not work, we get a lot of duplicate really fast
+        # start_at_match_id does not work at all it does seem that the doc was correct and get older match from that id
+
+        if len(self.players) == 0:
+            print("Fetched match for all players")
+            self.running = False
+            return
+
+        pid = None
+        while pid is None or pid < '999980646':
+            pid = self.players.pop()
+
+        remaining = None
+        total = None
+        results = None
+        start_at_match_id = None
+
+        while remaining is None or remaining > 0:
+            print(pid, start_at_match_id)
+            result = self.get_match_history_for_player(pid, start_at_match_id)
+            print(result)
+
+            if result.get('status') == 15:
+                break
+
+            matches = result["matches"]
+            results = result["num_results"]
+            total = result["total_results"]
+            remaining = result["results_remaining"]
+
+            if len(matches) > 0:
+                start_at_match_id = matches[-1]["match_id"] + 1
+                self.pending_matches.extend(matches)
+
+        print(f"+-> Found {len(self.pending_matches)} matches")
+        print(f"        - Results: {results}")
+        print(f"        - Total: {total}")
+        print(f"        - Remaining: {remaining}")
+
+
+
+def listen():
+    try:
+        builder = Dota2MatchDatasetBuilder()
+
+        # the problem with both approaches is that
+        # most players are all unique or Anonymous
+        # so it is hard to build a database for it
+        Dota2MatchQuery(builder).run()
+
+
+        # Dota2MatchDumper(builder, 6486086331).run()
+
+    except KeyboardInterrupt:
+        pass
+
+    builder.save()
+    builder.batches.close()
+    print("Writing done")
+
 
 
 if __name__ == "__main__":
@@ -633,14 +749,13 @@ if __name__ == "__main__":
     try:
         builder = Dota2MatchDatasetBuilder()
 
-        # the problem with both approaches is that
-        # most players are all unique or Anonymous
-        # so it is hard to build a database for it
-        Dota2MatchQuery(builder, 6486086331).run()
-        # Dota2MatchDumper(builder, 6486086331).run()
+        players = read_players()
+        Dota2PlayerMatchHistoryQuery(players, builder).run()
 
     except KeyboardInterrupt:
         pass
 
     builder.save()
+    builder.batches.close()
     print("Writing done")
+
