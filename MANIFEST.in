@@ -1,0 +1,17 @@
+global-exclude *.pyc
+global-exclude __pycache__
+recursive-include ranked/* *.yaml
+recursive-include ranked *.Target
+recursive-include ranked *.ini
+
+exclude tox.ini
+exclude Makefile
+exclude .pylintrc
+exclude .readthedocs.yml
+exclude requirements.txt
+
+prune docs
+prune tests
+prune extracted
+prune examples
+prune ranked/plugins
