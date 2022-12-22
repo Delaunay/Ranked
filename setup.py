@@ -35,7 +35,8 @@ args = dict(
         "altair",
         "trueskill",
         "numpy",
-        'orion'
+        'orion',
+        'typing_extensions',
     ],
     setup_requires=["setuptools"],
 )

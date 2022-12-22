@@ -110,7 +110,7 @@ class NoSkill(Ranker):
             team2 = to_team(match.get_player(1))
 
             delta_mu = sum(r.mu for r in team1) - sum(r.mu for r in team2)
-            sum_sigma = sum(r.sigma ** 2 for r in chain(team1, team2))
+            sum_sigma = sum(r.sigma**2 for r in chain(team1, team2))
             size = len(team1) + len(team2)
             denom = math.sqrt(size * (self.model.beta * self.model.beta) + sum_sigma)
 

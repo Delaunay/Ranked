@@ -4,3 +4,4 @@ trueskill
 mpmath
 numpy
 orion
+typing_extensions

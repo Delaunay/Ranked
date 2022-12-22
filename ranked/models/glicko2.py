@@ -48,13 +48,13 @@ class Glicko2Team(Team):
     @property
     def deviation(self):
         if self._deviation is None:
-            self._deviation = math.sqrt(sum([p.deviation ** 2 for p in self.players]))
+            self._deviation = math.sqrt(sum([p.deviation**2 for p in self.players]))
         return self._deviation
 
     @property
     def volatility(self):
         if self._volatility is None:
-            self._volatility = math.sqrt(sum([p.volatility ** 2 for p in self.players]))
+            self._volatility = math.sqrt(sum([p.volatility**2 for p in self.players]))
 
         return self._volatility
 
@@ -167,7 +167,7 @@ class Glicko2(Ranker):
 
     @cache
     def g(self, player: Glicko2Player) -> float:
-        return 1 / math.sqrt(1 + 3 * self.phi(player) ** 2 / math.pi ** 2)
+        return 1 / math.sqrt(1 + 3 * self.phi(player) ** 2 / math.pi**2)
 
     @cache
     def expectation(self, player: Glicko2Player, enemy: Glicko2Player) -> float:
@@ -211,19 +211,19 @@ class Glicko2(Ranker):
     def estimate_volatility(self, player: Glicko2Player, matches: Batch) -> float:
         delta = self.delta(player, matches)
         v = self.estimated_variance(player, matches)
-        ca = math.log(player.volatility ** 2)
+        ca = math.log(player.volatility**2)
 
         def f(x):
-            top = math.exp(x) * (delta ** 2 - self.phi(player) ** 2 - v - math.exp(x))
+            top = math.exp(x) * (delta**2 - self.phi(player) ** 2 - v - math.exp(x))
             bot = 2 * (self.phi(player) ** 2 + v + math.exp(x)) ** 2
 
-            return top / bot - (x - ca) / self.tau ** 2
+            return top / bot - (x - ca) / self.tau**2
 
         # Find bounds
-        a = math.log(player.volatility ** 2)
+        a = math.log(player.volatility**2)
 
-        if delta ** 2 > self.phi(player) ** 2 + v:
-            b = math.log(delta ** 2 - self.phi(player) ** 2 - v)
+        if delta**2 > self.phi(player) ** 2 + v:
+            b = math.log(delta**2 - self.phi(player) ** 2 - v)
 
         else:
             k = 1
@@ -254,8 +254,8 @@ class Glicko2(Ranker):
         v = self.estimated_variance(player, matches)
         sp = self.estimate_volatility(player, matches)
 
-        phi_s = math.sqrt(self.phi(player) ** 2 + sp ** 2)
-        phi_p = 1 / math.sqrt(1 / phi_s ** 2 + 1 / v)
+        phi_s = math.sqrt(self.phi(player) ** 2 + sp**2)
+        phi_p = 1 / math.sqrt(1 / phi_s**2 + 1 / v)
 
         score = 0
         for match in matches:
@@ -264,7 +264,7 @@ class Glicko2(Ranker):
 
             score += self.g(enemy) * (s - self.expectation(player, enemy))
 
-        mu_p = self.mu(player) + phi_p ** 2 * score
+        mu_p = self.mu(player) + phi_p**2 * score
 
         new_rating = self.scale * mu_p + self.center
         new_deviation = self.scale * phi_p
