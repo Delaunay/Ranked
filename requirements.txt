@@ -5,3 +5,4 @@ mpmath
 numpy
 orion
 typing_extensions
+openskill

@@ -1,3 +1,4 @@
+import copy
 from typing import Sequence, Union
 
 from ranked.utils import fetch_factories
@@ -37,8 +38,8 @@ class Team(Player):
     def __len__(self):
         return len(self.players)
 
-    def __getitem__(self):
-        return self.players[0]
+    def __getitem__(self, idx=0):
+        return self.players[idx]
 
     def __iter__(self):
         return iter(self.players)
@@ -49,7 +50,13 @@ class Team(Player):
 
 
 class Match:
-    """Represent a single match with N players"""
+    """Represent a single match with N players
+    
+    >>> m = Match(('Player1', 10), ('Player2', 5))
+    >>> m.get_ranks()
+    [0, 1]
+
+    """
 
     def __init__(self, *leaderboard) -> None:
         self.players = [p for p, _ in leaderboard]
@@ -65,6 +72,21 @@ class Match:
 
     def get_score(self, index) -> float:
         return self.scores[index]
+
+    def get_ranks(self):
+        """Return ranks"""
+        scores = sorted(copy.deepcopy(self.scores), reverse=True)
+        ranks = []
+
+        for score in self.scores:
+
+            for rank, value in enumerate(scores):
+
+                if value == score:
+                    ranks.append(rank)
+                    continue
+
+        return ranks
 
     def get_enemy(self, player: Player) -> Player:
         """Get the enemy of the given player; only available for 1v1"""

@@ -1,6 +1,10 @@
 import os
 
-from orion.client import build_experiment
+try:
+    from orion.client import build_experiment
+    ERROR = None
+except ImportError as err:
+    ERROR = err
 
 from ranked.datasets.synthetic import SimulationConfig, create_simulated_matchups
 from ranked.models.glicko2 import Glicko2
@@ -9,6 +13,9 @@ from ranked.simulation import Simulation
 
 
 def optimize(klass, max_trials=1000):
+    if ERROR is not None:
+        raise ERROR
+        
     center = 1500
 
     try:

@@ -1,6 +1,5 @@
 import json
 from collections import defaultdict
-from nis import match
 from typing import List
 
 from ranked.models import Batch, Match, Player, Ranker, Team
@@ -322,7 +321,7 @@ def load_skill_evolution(filename):
     return data[data["pid"] >= n_players]
 
 
-def synthetic_main(n_matches_bootstrap=100, n_maches_newplayers=20, n_benchmark=100):
+def synthetic_main(n_matches_bootstrap=400, n_maches_newplayers=20, n_benchmark=200):
     """Simulates player and their skill estimate"""
     print("Synthetic Benchmark")
     print("===================")
@@ -330,6 +329,7 @@ def synthetic_main(n_matches_bootstrap=100, n_maches_newplayers=20, n_benchmark=
     from ranked.datasets.synthetic import SimulationConfig, create_simulated_matchups
     from ranked.models.glicko2 import Glicko2
     from ranked.models.noskill import NoSkill
+    from ranked.models.openskill import OpenSkill
 
     center = 1500
     var = 64
@@ -375,6 +375,10 @@ def synthetic_main(n_matches_bootstrap=100, n_maches_newplayers=20, n_benchmark=
         beta,
         tau=0.2,
         draw_probability=0,
+    )
+
+    ranker = OpenSkill(
+        mu=center
     )
 
     matchup = create_simulated_matchups(
@@ -446,4 +450,4 @@ def generate_viz():
 
 if __name__ == "__main__":
     synthetic_main()
-    # generate_viz()
+    generate_viz()
