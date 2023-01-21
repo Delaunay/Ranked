@@ -378,7 +378,11 @@ def synthetic_main(n_matches_bootstrap=400, n_maches_newplayers=20, n_benchmark=
     )
 
     ranker = OpenSkill(
-        mu=center
+        mu=center,
+        sigma=500 / 3,
+        beta=beta,
+        tau=0.2,
+        initial_sigma=150
     )
 
     matchup = create_simulated_matchups(
@@ -399,14 +403,22 @@ def synthetic_main(n_matches_bootstrap=400, n_maches_newplayers=20, n_benchmark=
     # Benchmark
     print("2. Benchmark")
     matchup.n_matches = n_benchmark
-    for k, v in sim.benchmark().items():
-        print(f"{k:>30}: {v:.4f}")
+    repeat = 1
+    avg = defaultdict(int)
+    for _ in range(repeat):
+        for k, v in sim.benchmark().items():
+            avg[k] += v
+
+    for k, v in avg.items():
+        print(f"{k:>30}: {v / repeat:.4f}")
+
 
     # Check how new players are doing
     print("3. Add New Players")
 
     # Current pool of players have a perfect estimate
     matchup.set_estimate_to_truth()
+
 
     # If we add 2 players at the same time they might endup being
     # teamed up together
@@ -422,8 +434,15 @@ def synthetic_main(n_matches_bootstrap=400, n_maches_newplayers=20, n_benchmark=
     # Benchmark
     print("4. New Player Benchmark")
     matchup.n_matches = n_benchmark
-    for k, v in sim.benchmark(n_players).items():
-        print(f"{k:>30}: {v:.4f}")
+    repeat = 1
+    avg = defaultdict(int)
+
+    for _ in range(repeat):
+        for k, v in sim.benchmark(n_players).items():
+            avg[k] += v
+
+    for k, v in avg.items():
+        print(f"{k:>30}: {v / repeat:.4f}")
 
     # Plot skill estimation trajectories
     print("4. Generate Graphs")
@@ -450,4 +469,4 @@ def generate_viz():
 
 if __name__ == "__main__":
     synthetic_main()
-    generate_viz()
+    # generate_viz()

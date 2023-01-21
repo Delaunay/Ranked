@@ -55,17 +55,27 @@ def ensure_team(players):
 
 
 class OpenSkill(Ranker):
-    def __init__(self, model=None, mu=1500, sigma=173) -> None:
+    def __init__(self, model=None, mu=None, sigma=None, beta=None, tau=None, initial_sigma=None) -> None:
         if model is None:
             model = PlackettLuce
 
         self.model = model
         self.default_mu = mu
-        self.default_sigma = sigma
-        self.options = dict(
-            mu=mu,
-            sigma=sigma,
-        )
+        self.default_sigma = initial_sigma or sigma
+
+        self.options = dict()
+
+        if mu:
+            self.options['mu'] = mu
+
+        if sigma:
+            self.options['sigma'] = sigma
+    
+        if beta:
+            self.options['beta'] = beta
+
+        if tau:
+            self.options['tau'] = tau
 
     def new_player(self, a=None, b=None, *args, **config) -> Player:
         return OpenSkillPlayer(Rating(          #

@@ -203,6 +203,8 @@ class SimulatedMatchup(Matchup):
         # reset the matchmaker so he uses the updated pool
         self.reset()
 
+        return p
+
     def replace_player(self, *args, i=-1):
         """Replace an older player with a new one"""
         if self.pool is None:
