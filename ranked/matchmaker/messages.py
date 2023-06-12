@@ -14,7 +14,7 @@ class MessageKind(Enum):
 @dataclass
 class MatchmakingRequest:
     kind: MessageKind
-    player_ids: list[str]   
+    player_ids: list[str]
     player_skills: list[int] = field(default_factory=list)
     client_secrets: list[str] = field(default_factory=list)
     request_id: Optional[int] = None
@@ -36,8 +36,8 @@ class KeepAlive:
 
 @dataclass
 class MatchmakingResponse:
-    server_ip: str            # Address of the game instance
-    server_port: int          # Port to use to connect to the game instane
+    server_ip: str  # Address of the game instance
+    server_port: int  # Port to use to connect to the game instane
     client_secret: list[str]  # secret to use to connect to the instance
 
     kind: MessageKind = MessageKind.MMResponse
@@ -45,5 +45,5 @@ class MatchmakingResponse:
 
 @dataclass
 class MatchmakingServerConfig:
-    kind: MessageKind   
-    client_secrets: list[str]   # expected client secrets 
+    kind: MessageKind
+    client_secrets: list[str]  # expected client secrets

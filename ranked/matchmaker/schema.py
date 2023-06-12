@@ -36,8 +36,8 @@ class User(Base):
     name = Column(String(30), unique=True)
 
     # Current estimated skill
-    skill = Column(Integer, default=1500)  
-    sigma = Column(Integer, default=1500)  
+    skill = Column(Integer, default=1500)
+    sigma = Column(Integer, default=1500)
 
     created_at = Column(DateTime)
     last_seen = Column(DateTime, onupdate=datetime.datetime.utcnow)
@@ -47,17 +47,18 @@ class User(Base):
 #   Save match history for data analytics
 #
 
+
 class Match(Base):
     __tablename__ = "matches"
 
     _id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Match Data
-    team_winner = Column(Integer)   # Team that won
+    team_winner = Column(Integer)  # Team that won
 
 
 class Player(Base):
-    __tablename__ = 'players'
+    __tablename__ = "players"
 
     user_id = Column(Integer, ForeignKey("users._id"), nullable=False)
     match_id = Column(Integer, ForeignKey("matches._id"), nullable=False)
@@ -71,10 +72,10 @@ class Player(Base):
 
     # Meta data about the player
     # it will be used to train a ML network to estimate their skill level from the player stats
-     
+
 
 class MatchPlayer:
-    __tablename__ = 'matchplayers'
+    __tablename__ = "matchplayers"
 
     player_id = Column(Integer, ForeignKey("players._id"), nullable=False)
     match_id = Column(Integer, ForeignKey("matches._id"), nullable=False)
@@ -82,29 +83,33 @@ class MatchPlayer:
     # To avoid joins on common queries
     user_id = Column(Integer, ForeignKey("users._id"), nullable=False)
 
+
 #
-# Game Server 
+# Game Server
 #
 
+
 class GameServer(Base):
-    __tablename__ = 'gameservers'
+    __tablename__ = "gameservers"
 
     _id = Column(Integer, primary_key=True, autoincrement=True)
     port = Column(Integer)
     ipv4 = Column(String(15))
-    ipv6 = Column(String(48)) # https://github.com/torvalds/linux/blob/master/include/linux/inet.h#L50
+    ipv6 = Column(
+        String(48)
+    )  # https://github.com/torvalds/linux/blob/master/include/linux/inet.h#L50
     available = Column(Integer)
     region = Column(Integer)
 
 
 def get_sql_engine(uri):
     return sqlalchemy.create_engine(
-            uri,
-            echo=False,
-            future=True,
-            json_serializer=to_json,
-            json_deserializer=from_json,
-        )
+        uri,
+        echo=False,
+        future=True,
+        json_serializer=to_json,
+        json_deserializer=from_json,
+    )
 
 
 def create_database(uri):
@@ -118,11 +123,9 @@ def create_database(uri):
 
 def fetch_player_skills(engine, mm_request):
     with Session(engine) as session:
-        stmt = select(User).where(
-            User._id.in_((mm_request.player_ids))
-        )
+        stmt = select(User).where(User._id.in_((mm_request.player_ids)))
 
-        mm_request.player_skills =  session.execute(stmt).scalars().all()
+        mm_request.player_skills = session.execute(stmt).scalars().all()
 
 
 def find_game_server(engine):

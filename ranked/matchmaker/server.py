@@ -8,19 +8,20 @@ import logging
 
 import ranked.matchmaker.schema as db
 from ranked.matchmaker.worker import Matchmaker
-from ranked.matchmaker.messages import MessageKind, MatchmakingRequest, MatchmakingResponse
+from ranked.matchmaker.messages import (
+    MessageKind,
+    MatchmakingRequest,
+    MatchmakingResponse,
+)
 
 log = logging.getLogger(__name__)
 
 
-
 class Server:
     def __init__(self) -> None:
-        self.database_uri = ''
+        self.database_uri = ""
         self.worker = Matchmaker()
-        self._dispatch = {
-            MessageKind.MMRequest: self.matchmaking_request
-        }
+        self._dispatch = {MessageKind.MMRequest: self.matchmaking_request}
 
         db.create_database(self.get_sql_client())
 
@@ -40,7 +41,7 @@ class Server:
 
     async def matchmaking_request(self, client, payload):
         mm_request = MatchmakingRequest(**payload)
-        mm_request.generate_secrets() 
+        mm_request.generate_secrets()
 
         await self.fetch_player_skills(mm_request)
 
@@ -52,15 +53,20 @@ class Server:
 
         server = await self.find_free_game_server()
 
-        await self.send_json(client, asdict(MatchmakingResponse(
-            server.ip,
-            server.port,
-            mm_request.client_secrets,
-        )))
+        await self.send_json(
+            client,
+            asdict(
+                MatchmakingResponse(
+                    server.ip,
+                    server.port,
+                    mm_request.client_secrets,
+                )
+            ),
+        )
         client.close()
 
     async def send_json(self, client, obj):
-        payload = json.dumps(obj).encode('utf8')
+        payload = json.dumps(obj).encode("utf8")
 
         size = len(payload)
         size_bytes = size.to_bytes(4, byteorder=sys.byteorder)
@@ -72,13 +78,13 @@ class Server:
     async def handle_request(self, client):
         loop = asyncio.get_event_loop()
 
-        size_bytes = (await loop.sock_recv(client, 4))
+        size_bytes = await loop.sock_recv(client, 4)
         size = int(unpack("@I", size_bytes)[0])
 
-        request_bytes = (await loop.sock_recv(client, size))
-        
+        request_bytes = await loop.sock_recv(client, size)
+
         payload = json.loads(request_bytes)
-        
+
         handler = self._dispatch.get(MessageKind.MMRequest, None)
 
         if handler:
@@ -89,7 +95,7 @@ class Server:
     async def run_server(self):
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        server.bind(('localhost', 15555))
+        server.bind(("localhost", 15555))
         server.listen(8)
         server.setblocking(False)
 
@@ -116,5 +122,5 @@ def main():
     asyncio.run(mm.run_server())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

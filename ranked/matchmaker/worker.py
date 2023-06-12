@@ -3,18 +3,20 @@ from multiprocessing import Process, Manager
 import logging
 from itertools import chain
 
-from ranked.matchmaker.messages import MessageKind, MatchmakingRequest, MatchmakingResponse
+from ranked.matchmaker.messages import (
+    MessageKind,
+    MatchmakingRequest,
+    MatchmakingResponse,
+)
 
 
 log = logging.getLogger(__name__)
 
 
-
-
 def worker(input_q, output_q, state, player_size=4, team_count=2):
     buckets = [[]] * 10000
 
-    while state['running']:
+    while state["running"]:
         mm_request = input_q.get()
 
         skill = mm_request.skill()
@@ -23,7 +25,7 @@ def worker(input_q, output_q, state, player_size=4, team_count=2):
 
         mn = min(0, skill - 100)
         mx = max(len(buckets), skill + 101)
-        
+
         mid = (mx - mn) // 2
         player_count = 0
 
@@ -54,9 +56,6 @@ def worker(input_q, output_q, state, player_size=4, team_count=2):
         # --
         # --
 
-            
-
-
     input_q.close()
 
 
@@ -66,7 +65,7 @@ class MatchmakerProcessManager:
         self.input_q = self.manager.Queue()
         self.output_q = self.manager.Queue()
         self.state = self.manager.dict()
-        self.state['running'] = True
+        self.state["running"] = True
 
         self.process = Process(target=worker, args=(self.input_q, self.output_q))
         self.process.start()
@@ -78,10 +77,10 @@ class MatchmakerProcessManager:
         asyncio.ProcessPoolExecutor
 
     def stop(self):
-        self.state['running'] = False
+        self.state["running"] = False
 
     def find_team(self, mm_request: MatchmakingRequest, promise: asyncio.Future):
-        if not self.state['running']:
+        if not self.state["running"]:
             log.warning("Not running")
             return
 
@@ -92,7 +91,7 @@ class MatchmakerProcessManager:
         self.unique_id += 1
 
     async def set_promises(self):
-        while self.state['running']:
+        while self.state["running"]:
             uid, response = self.output_q.get()
             fut = self.futures.pop(uid)
             fut.set_result(response)

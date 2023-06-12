@@ -51,7 +51,7 @@ class Team(Player):
 
 class Match:
     """Represent a single match with N players
-    
+
     >>> m = Match(('Player1', 10), ('Player2', 5))
     >>> m.get_ranks()
     [0, 1]

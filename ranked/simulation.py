@@ -377,13 +377,7 @@ def synthetic_main(n_matches_bootstrap=400, n_maches_newplayers=20, n_benchmark=
         draw_probability=0,
     )
 
-    ranker = OpenSkill(
-        mu=center,
-        sigma=500 / 3,
-        beta=beta,
-        tau=0.2,
-        initial_sigma=150
-    )
+    ranker = OpenSkill(mu=center, sigma=500 / 3, beta=beta, tau=0.2, initial_sigma=150)
 
     matchup = create_simulated_matchups(
         ranker,
@@ -412,13 +406,11 @@ def synthetic_main(n_matches_bootstrap=400, n_maches_newplayers=20, n_benchmark=
     for k, v in avg.items():
         print(f"{k:>30}: {v / repeat:.4f}")
 
-
     # Check how new players are doing
     print("3. Add New Players")
 
     # Current pool of players have a perfect estimate
     matchup.set_estimate_to_truth()
-
 
     # If we add 2 players at the same time they might endup being
     # teamed up together

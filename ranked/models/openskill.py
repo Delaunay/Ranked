@@ -35,7 +35,7 @@ class OpenSkillPlayer(Player):
     @mu.setter
     def mu(self, value):
         self.rating.mu = value
- 
+
 
 class OpenSkillTeam(Team):
     def __init__(self, *players, **config) -> None:
@@ -55,7 +55,9 @@ def ensure_team(players):
 
 
 class OpenSkill(Ranker):
-    def __init__(self, model=None, mu=None, sigma=None, beta=None, tau=None, initial_sigma=None) -> None:
+    def __init__(
+        self, model=None, mu=None, sigma=None, beta=None, tau=None, initial_sigma=None
+    ) -> None:
         if model is None:
             model = PlackettLuce
 
@@ -66,23 +68,21 @@ class OpenSkill(Ranker):
         self.options = dict()
 
         if mu:
-            self.options['mu'] = mu
+            self.options["mu"] = mu
 
         if sigma:
-            self.options['sigma'] = sigma
-    
+            self.options["sigma"] = sigma
+
         if beta:
-            self.options['beta'] = beta
+            self.options["beta"] = beta
 
         if tau:
-            self.options['tau'] = tau
+            self.options["tau"] = tau
 
     def new_player(self, a=None, b=None, *args, **config) -> Player:
-        return OpenSkillPlayer(Rating(          #
-                mu=a or self.default_mu,        #
-                sigma=b or self.default_sigma   #
-            ),                                  # 
-            *args                               #
+        return OpenSkillPlayer(
+            Rating(mu=a or self.default_mu, sigma=b or self.default_sigma),  #  #  #  #
+            *args,  #
         )
 
     def new_team(self, *players, **config) -> Team:
@@ -90,7 +90,7 @@ class OpenSkill(Ranker):
 
     def win(self, match: Match):
         if len(match) == 2:
-            
+
             team1 = to_team(match.get_player(0))
             team2 = to_team(match.get_player(1))
             return predict_win([team1, team2], model=self.model, **self.options)[0]
