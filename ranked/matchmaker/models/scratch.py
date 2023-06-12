@@ -6,7 +6,7 @@
 
 
 # def get_inequality_constraint(pool_size):
-#     """Force team1 weights to be possitive, force team2 weights to be negative"""
+#     """Force team1 weights to be positive, force team2 weights to be negative"""
 #     # t1 > 0
 #     # t2 < 0
 #     #

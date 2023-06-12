@@ -1,18 +1,18 @@
 import asyncio
-import socket
-from struct import unpack
-from dataclasses import asdict
 import json
-import sys
 import logging
+import socket
+import sys
+from dataclasses import asdict
+from struct import unpack
 
 import ranked.matchmaker.schema as db
-from ranked.matchmaker.worker import Matchmaker
 from ranked.matchmaker.messages import (
-    MessageKind,
     MatchmakingRequest,
     MatchmakingResponse,
+    MessageKind,
 )
+from ranked.matchmaker.worker import Matchmaker
 
 log = logging.getLogger(__name__)
 

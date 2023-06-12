@@ -1,6 +1,6 @@
+import secrets
 from dataclasses import dataclass, field
 from enum import Enum
-import secrets
 from typing import Optional
 
 
@@ -37,7 +37,7 @@ class KeepAlive:
 @dataclass
 class MatchmakingResponse:
     server_ip: str  # Address of the game instance
-    server_port: int  # Port to use to connect to the game instane
+    server_port: int  # Port to use to connect to the game instance
     client_secret: list[str]  # secret to use to connect to the instance
 
     kind: MessageKind = MessageKind.MMResponse

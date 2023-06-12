@@ -1,28 +1,12 @@
-import logging
 import datetime
+import logging
 import random
 
-from ranked.matchmaker.messages import MatchmakingRequest
-
 import sqlalchemy
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy import Column, DateTime, Float, Index, Integer, delete, select
 from sqlalchemy.orm import Session, declarative_base
-from sqlalchemy import (
-    BINARY,
-    JSON,
-    Column,
-    DateTime,
-    ForeignKey,
-    Index,
-    Integer,
-    String,
-    Float,
-    UniqueConstraint,
-    delete,
-    select,
-    update,
-)
 
+from ranked.matchmaker.messages import MatchmakingRequest
 
 log = logging.getLogger(__name__)
 Base = declarative_base()

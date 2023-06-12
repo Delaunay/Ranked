@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 
 # * https://github.com/BYU-PRISM/GEKKO
@@ -90,8 +89,9 @@ class MatchmakerOptimizer:
 
 
 def main():
-    import numpy as np
     import random
+
+    import numpy as np
 
     pool = np.array(
         [

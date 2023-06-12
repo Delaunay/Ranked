@@ -1,14 +1,9 @@
 import asyncio
-from multiprocessing import Process, Manager
 import logging
 from itertools import chain
+from multiprocessing import Manager, Process
 
-from ranked.matchmaker.messages import (
-    MessageKind,
-    MatchmakingRequest,
-    MatchmakingResponse,
-)
-
+from ranked.matchmaker.messages import MatchmakingRequest
 
 log = logging.getLogger(__name__)
 

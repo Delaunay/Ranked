@@ -1,27 +1,14 @@
 import datetime
 import logging
 
+import sqlalchemy
+
 # Use MongoDB json serializer
 from bson.json_util import dumps as to_json
 from bson.json_util import loads as from_json
-import sqlalchemy
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, select
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, declarative_base
-from sqlalchemy import (
-    BINARY,
-    JSON,
-    Column,
-    DateTime,
-    ForeignKey,
-    Index,
-    Integer,
-    String,
-    UniqueConstraint,
-    delete,
-    select,
-    update,
-)
-
 
 log = logging.getLogger(__name__)
 Base = declarative_base()
@@ -123,7 +110,7 @@ def create_database(uri):
 
 def fetch_player_skills(engine, mm_request):
     with Session(engine) as session:
-        stmt = select(User).where(User._id.in_((mm_request.player_ids)))
+        stmt = select(User).where(User._id.in_(mm_request.player_ids))
 
         mm_request.player_skills = session.execute(stmt).scalars().all()
 
