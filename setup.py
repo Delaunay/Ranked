@@ -1,26 +1,26 @@
 #!/usr/bin/env python
-from setuptools import setup
+import os
 from pathlib import Path
 
-import os
+from setuptools import setup
 
 repo_root = os.path.dirname(os.path.abspath(__file__))
 
 
 with open("ranked/__init__.py") as file:
     for line in file.readlines():
-        if 'version' in line:
-            version = line.split('=')[1].strip().replace('"', "")
+        if "version" in line:
+            version = line.split("=")[1].strip().replace('"', "")
             break
 
 args = dict(
     name="ranked",
-    version="0.0.1",
+    version=version,
     description="Player Ranking Algorithm benchmarks",
     long_description=(Path(__file__).parent / "README.rst").read_text(),
     author="Pierre Delaunay",
     author_email="pierre@delaunay.io",
-    license='BSD-3-Clause',
+    license="BSD-3-Clause",
     url="https://github.com/Delaunay/ranked",
     packages=[
         "ranked",
@@ -29,7 +29,7 @@ args = dict(
         "ranked.utils",
     ],
     zip_safe=True,
-    python_requires='>=3.7.*',
+    python_requires=">=3.7",
     install_requires=[
         "scipy",
         "altair",
@@ -53,7 +53,9 @@ args["classifiers"] = [
     "Programming Language :: Python",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-] + [("Programming Language :: Python :: %s" % x) for x in "3 3.7 3.8 3.9 3.10".split()]
+] + [
+    ("Programming Language :: Python :: %s" % x) for x in "3 3.8 3.9 3.10 3.11".split()
+]
 
 if __name__ == "__main__":
     setup(**args)

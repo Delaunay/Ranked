@@ -1,6 +1,4 @@
-from itertools import chain
-
-from openskill import Rating, rate, predict_win
+from openskill import Rating, predict_win, rate
 from openskill.models import PlackettLuce
 
 from ranked.models import Match, Player, Ranker, Team
@@ -81,7 +79,7 @@ class OpenSkill(Ranker):
 
     def new_player(self, a=None, b=None, *args, **config) -> Player:
         return OpenSkillPlayer(
-            Rating(mu=a or self.default_mu, sigma=b or self.default_sigma),  #  #  #  #
+            Rating(mu=a or self.default_mu, sigma=b or self.default_sigma),  #
             *args,  #
         )
 

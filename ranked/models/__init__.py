@@ -30,7 +30,7 @@ class Team(Player):
 
     def skill(self) -> float:
         """Returns the estimated skill of this team"""
-        return sum([player.skill() for player in self.players])
+        return sum(player.skill() for player in self.players)
 
     def __contains__(self, player):
         return player in self.players

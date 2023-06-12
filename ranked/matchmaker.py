@@ -1,8 +1,8 @@
-from typing import List, Tuple
+from typing import List
 
 import numpy as np
 
-from ranked.models import Batch, Match, Player, Ranker, Team
+from ranked.models import Player
 
 # List of player matched together
 MatchMakerTeam = List[int]

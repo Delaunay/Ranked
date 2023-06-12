@@ -1,7 +1,8 @@
-from ranked.calibration import optimize, ERROR
+import pytest
+
+from ranked.calibration import ERROR, optimize
 from ranked.models.noskill import NoSkill
 
-import pytest
 
 
 @pytest.mark.skipif(ERROR is not None, reason="Does not support Orion")

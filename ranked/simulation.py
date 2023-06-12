@@ -1,8 +1,6 @@
-import json
 from collections import defaultdict
-from typing import List
 
-from ranked.models import Batch, Match, Player, Ranker, Team
+from ranked.models import Batch, Match, Team
 
 
 class SaveEvolution:
@@ -15,7 +13,7 @@ class SaveEvolution:
         self.ranker = ranker.__class__.__name__
         self.pool = pool
 
-        name = fname.rsplit(".", maxsplit=1)[0]
+        fname.rsplit(".", maxsplit=1)[0]
         self.previous = dict()
 
     def __enter__(self):
@@ -29,7 +27,7 @@ class SaveEvolution:
         if not self.fs:
             return
 
-        self.fs.write(f"#match,pid,skill,cons,method,diff,win\n")
+        self.fs.write("#match,pid,skill,cons,method,diff,win\n")
 
     def save(self, iter, method, player_filter=None):
         if not self.fs:
@@ -65,7 +63,7 @@ class SaveEvolution:
 class Simulation:
     """Simulate ranking estimation evolution using simulated matches
 
-    On one side the matchmaker is working torwards making teams of equal strength
+    On one side the matchmaker is working towards making teams of equal strength
     while the Ranker is estimating the skill of each players from which the win
     probability of a given match can be deduced.
 
@@ -119,7 +117,7 @@ class Simulation:
 
     def benchmark(self, playerid=None):
         """Use the latest skill estimate for each player and estimate the win probabilities
-        for each matchup, if the Ranker estimated their skill corectly the precision should higher than 50%
+        for each matchup, if the Ranker estimated their skill correctly the precision should higher than 50%
         """
         acc = 0
         count = 0
@@ -160,7 +158,7 @@ class Simulation:
 
                 # average skill diff in this match
                 avg = avg / len(match.teams)
-                avg_diff = sum([abs(team.skill() - avg) for team in match.teams]) / len(
+                avg_diff = sum(abs(team.skill() - avg) for team in match.teams) / len(
                     match.teams
                 )
 
@@ -189,8 +187,8 @@ class Simulation:
 
         # Overall skill for every team should be even
         # regardless of their position inside the team array
-        avg = sum([v for _, v in team_skill.items()]) / len(team_skill)
-        avg_diff = sum([abs(v) - avg for _, v in team_skill.items()]) / len(team_skill)
+        avg = sum(v for _, v in team_skill.items()) / len(team_skill)
+        avg_diff = sum(abs(v) - avg for _, v in team_skill.items()) / len(team_skill)
 
         # Is the matchmaker biased toward a team
         # should be 0
@@ -234,7 +232,7 @@ def skill_estimate_evolution(dataframe, title=None):
 
     lines = points + highlight_lines
 
-    # put consitency at the bottom
+    # put consistency at the bottom
     x_ticks = (
         chart.mark_line()
         .encode(

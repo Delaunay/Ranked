@@ -139,7 +139,7 @@ def get_team_match_batch(ranker, sub=0, div=1) -> Tuple[Player, Batch]:
 
 
 def test_elo_team():
-    from scipy.stats import norm
+    pass
 
     ranker = ChessElo()
 

@@ -8,7 +8,6 @@ except ImportError as err:
     ERROR = err
 
 from ranked.datasets.synthetic import SimulationConfig, create_simulated_matchups
-from ranked.models.glicko2 import Glicko2
 from ranked.models.noskill import NoSkill
 from ranked.simulation import Simulation
 
@@ -21,7 +20,7 @@ def optimize(klass, max_trials=1000):
 
     try:
         os.remove("orion.pkl")
-    except:
+    except OSError:
         pass
 
     experiment = build_experiment(
