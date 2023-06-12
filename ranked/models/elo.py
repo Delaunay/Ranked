@@ -26,7 +26,7 @@ class EloTeam(Team):
     @property
     def mu(self):
         if self._mu is None:
-            self._mu = sum([p.skill() for p in self.players])
+            self._mu = sum(p.skill() for p in self.players)
         return self._mu
 
     @mu.setter

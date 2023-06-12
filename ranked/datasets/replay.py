@@ -32,7 +32,7 @@ class ReplayMatchup(Matchup):
         self.pool = pool
         self.step = 0
 
-        with open(matchupfs, "r") as data:
+        with open(matchupfs) as data:
             for line in data.readline():
                 #
                 match = json.loads(line)
@@ -59,5 +59,4 @@ class ReplayMatchup(Matchup):
         self.batches.sort(key=lambda item: item[0])
 
     def matches(self) -> Batch:
-        for b in self.batches:
-            yield b
+        yield from self.batches

@@ -2,7 +2,6 @@ def main():
     import json
 
     import altair as alt
-    import pandas as pd
 
     with open("C:/opt/dota2_ranks.txt") as ranks_fs:
         data = json.load(ranks_fs)
