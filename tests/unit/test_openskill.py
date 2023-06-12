@@ -1,4 +1,3 @@
-
 from typing import Tuple
 
 from ranked.models import Batch, Match, Player
@@ -35,8 +34,8 @@ def test_openskill():
     p1, batch = get_match_batch(ranker)
 
     assert all(
-        [ 
-            check(ranker.win(batch.matches[0]), 0.500997102292219),   # 0.505756
+        [
+            check(ranker.win(batch.matches[0]), 0.500997102292219),  # 0.505756
             check(ranker.win(batch.matches[1]), 0.5004837884531367),  # 0.686300
             check(ranker.win(batch.matches[2]), 0.5008101284707912),  # 0.785026
         ]
@@ -45,4 +44,4 @@ def test_openskill():
     for match in batch:
         ranker.update(match)
 
-    assert nearly(p1.skill(), 1464.1202991405364) 
+    assert nearly(p1.skill(), 1464.1202991405364)

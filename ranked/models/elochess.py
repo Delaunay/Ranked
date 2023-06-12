@@ -1,5 +1,3 @@
-from scipy.stats import norm
-
 from ranked.models import Match, Ranker
 from ranked.models.elo import EloPlayer, EloTeam
 

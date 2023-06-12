@@ -1,7 +1,7 @@
 """Top level module for ranked"""
 
 __descr__ = "Model Zoo for Ranking algo"
-__version__ = "0.0.1"
+__version__ = "1.0.1"
 __license__ = "BSD 3-Clause License"
 __author__ = "Pierre Delaunay"
 __author_email__ = "pierre@delaunay.io"

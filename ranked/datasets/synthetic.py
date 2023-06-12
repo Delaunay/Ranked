@@ -1,5 +1,4 @@
 import json
-import math
 from dataclasses import dataclass
 from typing import List, Tuple
 
@@ -43,7 +42,7 @@ class MatchupReplaySaver:
         players = model.players
 
         with open("model.csv", "w") as fs:
-            fs.write(f"pid,skill,cons\n")
+            fs.write("pid,skill,cons\n")
 
             for i, p in enumerate(players):
                 if player_filter and i < player_filter:

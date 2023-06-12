@@ -42,19 +42,19 @@ class Glicko2Team(Team):
     @property
     def rating(self):
         if self._rating is None:
-            self._rating = sum([p.rating for p in self.players])
+            self._rating = sum(p.rating for p in self.players)
         return self._rating
 
     @property
     def deviation(self):
         if self._deviation is None:
-            self._deviation = math.sqrt(sum([p.deviation**2 for p in self.players]))
+            self._deviation = math.sqrt(sum(p.deviation**2 for p in self.players))
         return self._deviation
 
     @property
     def volatility(self):
         if self._volatility is None:
-            self._volatility = math.sqrt(sum([p.volatility**2 for p in self.players]))
+            self._volatility = math.sqrt(sum(p.volatility**2 for p in self.players))
 
         return self._volatility
 
@@ -73,7 +73,7 @@ class Glicko2Team(Team):
         #   i.e the volatility of the overall team is not proportional
         #
         # Because we only observe the result of the overall team
-        # we cant really estimate the deviation of individual players
+        # we can't really estimate the deviation of individual players
 
         diff = value - self.deviation
 
