@@ -64,12 +64,30 @@ Features
    the matchmaker to make the best decision possible.
 
 
+Examples
+--------
+
+.. code-block:: python
+
+    ranker = ChessElo()
+    p1 = ranker.new_player((1613 - sub) / div)
+    p2 = ranker.new_player((1609 - sub) / div)
+
+    m1 = Match((p1, 0), (p2, 1)),  # p1 lost (lower score)
+
+    win_prob = ranker.win(m)
+
+    ranker.update(m)
+
+    # P1 lost so its skill got updated down
+    new_skill = p1.skill()  # 1603.19
+
+
 WIP
 ---
 
 * NoSkill2
 * Dota2 extracted matches
-* publish to Pypi
 
 
 .. code-block:: bash
